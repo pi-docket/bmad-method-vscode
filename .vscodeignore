@@ -1,0 +1,47 @@
+# Source files - only compiled output needed
+src/
+*.ts
+
+# Exclude test output and source maps from out/
+out/__tests__/
+out/**/*.map
+
+# Dependencies
+node_modules/
+package-lock.json
+
+# Development config
+tsconfig.json
+vitest.config.ts
+.vscode/
+.gitignore
+.envrc
+
+# Test and coverage
+coverage/
+.nyc_output/
+
+# Documentation and BMAD working files
+docs/
+_bmad/
+_bmad-output/
+CLAUDE.md
+GEMINI.md
+AGENTS.md
+STATUS.md
+
+# Version control
+.git/
+.github/
+
+# AI tool configs
+.claude/
+.codex/
+.gemini/
+
+# Archive and scratch
+archive/
+
+# Build artifacts
+*.vsix
+*.png

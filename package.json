@@ -1,0 +1,135 @@
+{
+  "name": "bmad-method",
+  "displayName": "BMad Method for VS Code",
+  "description": "VS Code extension for the BMad Method",
+  "version": "0.0.1-pre",
+  "publisher": "bmad-code-llc",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/bmad-code-org/bmad-method-vscode"
+  },
+  "engines": {
+    "vscode": "^1.80.0"
+  },
+  "categories": [
+    "Other"
+  ],
+  "activationEvents": [
+    "onLanguage:markdown",
+    "onView:bmadStories",
+    "onView:bmadTechSpecs"
+  ],
+  "main": "./out/extension.js",
+  "contributes": {
+    "commands": [
+      {
+        "command": "bmadMethod.createStory",
+        "title": "BMad Method: Create Story"
+      },
+      {
+        "command": "bmadMethod.developStory",
+        "title": "BMad Method: Develop Story"
+      },
+      {
+        "command": "bmadMethod.refreshStories",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "bmadMethod.refreshTechSpecs",
+        "title": "Refresh",
+        "icon": "$(refresh)"
+      },
+      {
+        "command": "bmadMethod.revealStory",
+        "title": "Reveal Story"
+      },
+      {
+        "command": "bmadMethod.revealTask",
+        "title": "Reveal Task"
+      }
+    ],
+    "views": {
+      "explorer": [
+        {
+          "id": "bmadStories",
+          "name": "BMad Epics",
+          "icon": "$(list-tree)",
+          "contextualTitle": "BMad Epics"
+        },
+        {
+          "id": "bmadTechSpecs",
+          "name": "BMad Tech Specs",
+          "icon": "$(list-tree)",
+          "contextualTitle": "BMad Tech Specs"
+        }
+      ]
+    },
+    "menus": {
+      "view/title": [
+        {
+          "command": "bmadMethod.refreshStories",
+          "when": "view == bmadStories",
+          "group": "navigation"
+        },
+        {
+          "command": "bmadMethod.refreshTechSpecs",
+          "when": "view == bmadTechSpecs",
+          "group": "navigation"
+        }
+      ]
+    },
+    "viewsWelcome": [
+      {
+        "view": "bmadStories",
+        "contents": "No epics files found matching the configured pattern.\n[Configure Pattern](command:workbench.action.openSettings?%5B%22bmad.epicFilePattern%22%5D)"
+      },
+      {
+        "view": "bmadTechSpecs",
+        "contents": "No tech spec files found matching the configured pattern.\n[Configure Pattern](command:workbench.action.openSettings?%5B%22bmad.techSpecFilePattern%22%5D)"
+      }
+    ],
+    "configuration": {
+      "title": "BMad Method",
+      "properties": {
+        "bmad.enableCodeLens": {
+          "type": "boolean",
+          "default": true,
+          "description": "Enable CodeLens for BMAD story files"
+        },
+        "bmad.epicFilePattern": {
+          "type": "string",
+          "default": "**/*epic*.md",
+          "description": "Glob pattern for BMAD epic files containing stories"
+        },
+        "bmad.techSpecFilePattern": {
+          "type": "string",
+          "default": "**/tech-spec-*.md",
+          "description": "Glob pattern for BMAD tech spec files"
+        },
+        "bmad.cliTool": {
+          "type": "string",
+          "default": "claude",
+          "minLength": 1,
+          "description": "CLI tool binary used to run BMAD story workflows"
+        }
+      }
+    }
+  },
+  "scripts": {
+    "compile": "tsc -p ./",
+    "watch": "tsc -watch -p ./",
+    "test": "vitest run",
+    "test:watch": "vitest",
+    "test:coverage": "vitest run --coverage",
+    "test:legacy": "npm run compile && node ./scripts/test-cli-tool.js"
+  },
+  "devDependencies": {
+    "@types/node": "^18.0.0",
+    "@types/vscode": "^1.80.0",
+    "@vitest/coverage-v8": "^3.2.4",
+    "typescript": "^5.0.0",
+    "vitest": "^3.2.4"
+  }
+}
