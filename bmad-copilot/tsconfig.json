@@ -2,18 +2,19 @@
   "compilerOptions": {
     "module": "Node16",
     "target": "ES2022",
-    "outDir": "out",
-    "rootDir": "src",
     "lib": ["ES2022"],
-    "sourceMap": true,
+    "moduleResolution": "Node16",
+    "outDir": "dist",
+    "rootDir": "src",
+    "sourceMap": false,
     "strict": true,
     "esModuleInterop": true,
     "skipLibCheck": true,
     "forceConsistentCasingInFileNames": true,
-    "resolveJsonModule": true,
     "declaration": true,
-    "moduleResolution": "Node16"
+    "resolveJsonModule": true,
+    "newLine": "lf"
   },
-  "include": ["src/**/*"],
-  "exclude": ["node_modules", "out"]
+  "include": ["src/**/*.ts"],
+  "exclude": ["node_modules", "dist", "out"]
 }
