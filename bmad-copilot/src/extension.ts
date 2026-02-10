@@ -1,0 +1,253 @@
+/**
+ * @fileoverview Extension entry point for the BMAD Copilot Adapter.
+ *
+ * **Responsibilities**
+ * 1. Register the `@bmad` Chat Participant via the VS Code Chat API.
+ * 2. Create the {@link CliBridge} for real CLI process spawning.
+ * 3. Trigger an initial {@link CommandRegistry.scan} on activation.
+ * 4. Watch for `_bmad/` and `.github/` directory changes and re-scan.
+ * 5. Register `bmad-copilot.rescan` and `bmad-copilot.install` commands.
+ *
+ * **Debugging**
+ * - Open the Output panel → select "BMAD Copilot" to see all logs.
+ * - Set breakpoints in any `src/*.ts` file; they resolve via source maps.
+ * - Press F5 to launch the Extension Development Host.
+ *
+ * @module extension
+ */
+
+import * as vscode from 'vscode';
+import { CommandRegistry } from './commandRegistry.js';
+import { CliBridge } from './cliBridge.js';
+import { ChatBridge } from './chatBridge.js';
+import { ensureCopilotPrompts } from './promptMirror.js';
+
+/* ------------------------------------------------------------------ */
+/*  Constants                                                         */
+/* ------------------------------------------------------------------ */
+
+const PARTICIPANT_ID = 'bmad';
+const OUTPUT_CHANNEL_NAME = 'BMAD Copilot';
+
+/* ------------------------------------------------------------------ */
+/*  activate                                                          */
+/* ------------------------------------------------------------------ */
+
+/**
+ * VS Code extension activation entry point.
+ *
+ * @param context - Extension context for managing disposables.
+ */
+export async function activate(
+  context: vscode.ExtensionContext,
+): Promise<void> {
+  const outputChannel = vscode.window.createOutputChannel(OUTPUT_CHANNEL_NAME);
+  context.subscriptions.push(outputChannel);
+
+  log(outputChannel, 'Activating BMAD Copilot Adapter…');
+
+  /* -------------------------------------------------------------- */
+  /*  Core services                                                 */
+  /* -------------------------------------------------------------- */
+
+  const registry = new CommandRegistry();
+  const cliBridge = new CliBridge(outputChannel);
+
+  // Initial scan (with prompt mirroring)
+  const workspaceRoot = getWorkspaceRoot();
+  if (workspaceRoot) {
+    await performScanWithMirror(registry, workspaceRoot, outputChannel);
+  } else {
+    log(outputChannel, 'No workspace folder open — skipping initial scan.');
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Chat Participant                                               */
+  /* -------------------------------------------------------------- */
+
+  const chatBridge = new ChatBridge(registry, cliBridge, outputChannel);
+
+  const participant = vscode.chat.createChatParticipant(
+    PARTICIPANT_ID,
+    chatBridge.handler,
+  );
+  participant.iconPath = new vscode.ThemeIcon('rocket');
+  context.subscriptions.push(participant);
+
+  log(outputChannel, 'Chat participant @bmad registered.');
+
+  /* -------------------------------------------------------------- */
+  /*  Registered commands                                            */
+  /* -------------------------------------------------------------- */
+
+  // Manual rescan (with mirror)
+  context.subscriptions.push(
+    vscode.commands.registerCommand('bmad-copilot.rescan', async () => {
+      const root = getWorkspaceRoot();
+      if (!root) {
+        vscode.window.showWarningMessage('BMAD Copilot: No workspace folder is open.');
+        return;
+      }
+      const count = await performScanWithMirror(registry, root, outputChannel);
+      vscode.window.showInformationMessage(`BMAD Copilot: Scanned ${count} commands.`);
+    }),
+  );
+
+  // Open install terminal
+  context.subscriptions.push(
+    vscode.commands.registerCommand('bmad-copilot.install', () => {
+      const root = getWorkspaceRoot();
+      if (!root) {
+        vscode.window.showWarningMessage('BMAD Copilot: No workspace folder is open.');
+        return;
+      }
+      cliBridge.openTerminal(['install', '--tools', 'github-copilot'], root);
+    }),
+  );
+
+  /* -------------------------------------------------------------- */
+  /*  File watchers                                                  */
+  /* -------------------------------------------------------------- */
+
+  if (workspaceRoot) {
+    // Watch _bmad/ and .github/ for changes
+    const patterns = [
+      new vscode.RelativePattern(workspaceRoot, '_bmad/**'),
+      new vscode.RelativePattern(workspaceRoot, '.github/prompts/**'),
+      new vscode.RelativePattern(workspaceRoot, '.github/agents/**'),
+    ];
+
+    let scanTimer: ReturnType<typeof setTimeout> | undefined;
+    const debouncedScan = () => {
+      if (scanTimer) clearTimeout(scanTimer);
+      scanTimer = setTimeout(async () => {
+        log(outputChannel, 'File change detected — rescanning…');
+        const root = getWorkspaceRoot();
+        if (root) await performScanWithMirror(registry, root, outputChannel);
+      }, 2000);
+    };
+
+    for (const pattern of patterns) {
+      const watcher = vscode.workspace.createFileSystemWatcher(pattern);
+      watcher.onDidChange(debouncedScan);
+      watcher.onDidCreate(debouncedScan);
+      watcher.onDidDelete(debouncedScan);
+      context.subscriptions.push(watcher);
+    }
+
+    log(outputChannel, 'File watchers on _bmad/ and .github/ registered.');
+  }
+
+  /* -------------------------------------------------------------- */
+  /*  Configuration change listener                                  */
+  /* -------------------------------------------------------------- */
+
+  context.subscriptions.push(
+    vscode.workspace.onDidChangeConfiguration(async (e) => {
+      if (e.affectsConfiguration('bmad')) {
+        log(outputChannel, 'Configuration changed — rescanning…');
+        const root = getWorkspaceRoot();
+        if (root) await performScanWithMirror(registry, root, outputChannel);
+      }
+    }),
+  );
+
+  log(outputChannel, 'BMAD Copilot Adapter activated ✓');
+}
+
+/* ------------------------------------------------------------------ */
+/*  deactivate                                                        */
+/* ------------------------------------------------------------------ */
+
+/** Extension deactivation hook. */
+export function deactivate(): void {
+  // All disposables are managed via context.subscriptions.
+}
+
+/* ------------------------------------------------------------------ */
+/*  Helpers                                                           */
+/* ------------------------------------------------------------------ */
+
+/**
+ * Run prompt mirror (claude-code → Copilot) if needed, then scan.
+ *
+ * This is the single function called at activation, on rescan, and
+ * on file-change detection. It guarantees that:
+ * 1. If `.github/prompts/` is missing but `_bmad/ide/claude-code/`
+ *    exists → mirror files are generated first.
+ * 2. Then a full registry scan picks up the (potentially new) files.
+ */
+async function performScanWithMirror(
+  registry: CommandRegistry,
+  workspaceRoot: string,
+  outputChannel: vscode.OutputChannel,
+): Promise<number> {
+  // ── Attempt prompt mirror ──────────────────────────────────
+  try {
+    const bmadDir = findBmadDir(workspaceRoot);
+    if (bmadDir) {
+      const result = await ensureCopilotPrompts({ workspaceRoot, bmadDir });
+      if (result.alreadyExists) {
+        log(outputChannel, 'Prompt mirror: Copilot files already exist — skipped.');
+      } else if (result.performed) {
+        log(
+          outputChannel,
+          `Prompt mirror: ${result.promptCount} prompt(s), ${result.agentCount} agent(s) ` +
+            `mirrored from claude-code → .github/`,
+        );
+      } else {
+        log(outputChannel, `Prompt mirror: ${result.message}`);
+      }
+    }
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(outputChannel, `Prompt mirror failed: ${msg}`);
+  }
+
+  // ── Normal scan (picks up mirrored files) ──────────────────
+  try {
+    const state = await registry.scan(workspaceRoot);
+    if (!state) {
+      log(outputChannel, 'Scan returned null — _bmad/ not found.');
+      return 0;
+    }
+    log(
+      outputChannel,
+      `Scan complete: ${state.commands.size} commands, ` +
+        `${state.promptFiles.size} prompt files, ` +
+        `modules=[${state.modules.join(', ')}]`,
+    );
+    return state.commands.size;
+  } catch (err) {
+    const msg = err instanceof Error ? err.message : String(err);
+    log(outputChannel, `Scan failed: ${msg}`);
+    vscode.window.showWarningMessage(`BMAD Copilot: scan failed — ${msg}`);
+    return 0;
+  }
+}
+
+/**
+ * Locate the `_bmad` directory in the workspace.
+ */
+function findBmadDir(workspaceRoot: string): string | null {
+  const fs = require('node:fs');
+  const path = require('node:path');
+  const candidate = path.join(workspaceRoot, '_bmad');
+  if (fs.existsSync(candidate)) return candidate;
+  const parent = path.dirname(workspaceRoot);
+  if (parent !== workspaceRoot) {
+    const parentCandidate = path.join(parent, '_bmad');
+    if (fs.existsSync(parentCandidate)) return parentCandidate;
+  }
+  return null;
+}
+
+function getWorkspaceRoot(): string | undefined {
+  const folders = vscode.workspace.workspaceFolders;
+  return folders && folders.length > 0 ? folders[0].uri.fsPath : undefined;
+}
+
+function log(channel: vscode.OutputChannel, message: string): void {
+  const ts = new Date().toISOString();
+  channel.appendLine(`[${ts}] ${message}`);
+}
