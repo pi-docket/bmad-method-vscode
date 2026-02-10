@@ -102,7 +102,7 @@ official BMAD prompt design.
 | Responsibility        | Detail                                                               |
 | --------------------- | -------------------------------------------------------------------- |
 | Routing               | Maps slash commands (`/help`, `/run`, `/agents`, etc.) to handlers   |
-| Prompt File Execution | Reads `.prompt.md` / `.agent.md` → strips frontmatter → sends to LLM |
+| Prompt File Execution | Reads `.prompt.md` / `.agent.md` → strips frontmatter → sends raw prompt to LLM (no ref resolution) |
 | CLI Delegation        | Delegates `/install` to `CliBridge.openTerminal()`                   |
 | Free-text             | Fuzzy-matches user input to known commands                           |
 | LLM Streaming         | Calls `request.model.sendRequest()` and streams fragments            |

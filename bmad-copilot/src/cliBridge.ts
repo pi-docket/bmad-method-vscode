@@ -263,13 +263,19 @@ export class CliBridge {
         }
       });
 
+      let settled = false;
+
       proc.on('close', (code) => {
+        if (settled) return;
+        settled = true;
         cancelSub.dispose();
         this.log(`Process exited with code ${code}`);
         resolve(code ?? 1);
       });
 
       proc.on('error', (err) => {
+        if (settled) return;
+        settled = true;
         cancelSub.dispose();
         this.log(`Process error: ${err.message}`);
         reject(err);

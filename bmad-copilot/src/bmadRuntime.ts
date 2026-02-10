@@ -568,7 +568,8 @@ export class BmadRuntime {
     // Normalise: strip leading {project-root}/ if present
     let cleanPath = relativePath.replace(/^\{project-root\}\//, '');
     // Also strip leading _bmad/ to avoid double-pathing
-    if (!cleanPath.startsWith(BMAD_FOLDER_NAME)) {
+    // Check for _bmad/ or _bmad\ (not just _bmad prefix like _bmad_v2)
+    if (!cleanPath.startsWith(BMAD_FOLDER_NAME + '/') && !cleanPath.startsWith(BMAD_FOLDER_NAME + '\\')) {
       cleanPath = path.join(BMAD_FOLDER_NAME, cleanPath);
     }
 

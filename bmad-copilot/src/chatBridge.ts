@@ -109,13 +109,6 @@ export class ChatBridge {
   private readonly cliBridge: CliBridge;
   private readonly outputChannel: vscode.OutputChannel;
 
-  /**
-   * Active interactive CLI process. If set, the next user message in
-   * chat will be piped to this process's stdin instead of being
-   * treated as a new command.
-   */
-  private activeProcess: import('node:child_process').ChildProcess | null = null;
-
   constructor(
     registry: CommandRegistry,
     cliBridge: CliBridge,
@@ -140,13 +133,6 @@ export class ChatBridge {
     this.log(`command=${request.command ?? '(none)'} prompt="${request.prompt}"`);
 
     try {
-      // --- If there's an active interactive process, pipe input ---
-      if (this.activeProcess?.stdin && !this.activeProcess.killed) {
-        this.activeProcess.stdin.write(request.prompt + '\n');
-        stream.markdown(`📝 Sent: \`${request.prompt}\``);
-        return {};
-      }
-
       const state = this.registry.state;
 
       // --- Installation guard ---
@@ -627,7 +613,12 @@ export class ChatBridge {
     filePath: string,
     userInput: string,
   ): string {
-    const raw = fs.readFileSync(filePath, 'utf8');
+    let raw = fs.readFileSync(filePath, 'utf8');
+
+    // Strip UTF-8 BOM if present
+    if (raw.charCodeAt(0) === 0xFEFF) {
+      raw = raw.slice(1);
+    }
 
     // Strip YAML frontmatter (--- ... ---)
     const fmMatch = raw.match(/^---\r?\n([\s\S]*?)\r?\n---\r?\n([\s\S]*)$/);
@@ -710,7 +701,7 @@ export class ChatBridge {
     } catch (err) {
       if (err instanceof vscode.LanguageModelError) {
         this.log(`LLM error: ${err.message} (code: ${err.code})`);
-        const msg = err.code === 'quota'
+        const msg = err.code === 'Blocked'
           ? '\n\n⚠️ **Rate limit reached.** Please wait a moment and try again.'
           : `\n\n⚠️ **Model error**: ${err.message}`;
         stream.markdown(msg);

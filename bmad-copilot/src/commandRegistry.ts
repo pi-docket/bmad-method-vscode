@@ -378,11 +378,12 @@ export class CommandRegistry {
    * @returns Parsed records, or an empty array if the file is missing.
    */
   private async loadCsv<T extends { [key: string]: string }>(filePath: string): Promise<T[]> {
-    if (!fs.existsSync(filePath)) {
+    try {
+      const content = await fs.promises.readFile(filePath, 'utf8');
+      return parseCsv<T>(content);
+    } catch {
       return [];
     }
-    const content = fs.readFileSync(filePath, 'utf8');
-    return parseCsv<T>(content);
   }
 
   /**
@@ -564,7 +565,10 @@ export class CommandRegistry {
             }
           }
         }
-      } catch { /* ignore read errors */ }
+      } catch (err) {
+        // Ignore permission or access errors on .github/prompts/
+        this.outputChannel.appendLine(`Warning: Could not read .github/prompts/ — ${err}`);
+      }
     }
 
     // Scan .github/agents/*.agent.md
@@ -592,7 +596,10 @@ export class CommandRegistry {
             }
           }
         }
-      } catch { /* ignore read errors */ }
+      } catch (err) {
+        // Ignore permission or access errors on .github/agents/
+        this.outputChannel.appendLine(`Warning: Could not read .github/agents/ — ${err}`);
+      }
     }
 
     this._state.hasCopilotFiles = foundAny;

@@ -184,11 +184,12 @@ async function performScanWithMirror(
   workspaceRoot: string,
   outputChannel: vscode.OutputChannel,
 ): Promise<number> {
+  // Read config once at the top
+  const config = vscode.workspace.getConfiguration('bmad');
+  const configuredBmadDir = config.get<string>('bmadDir');
+
   // ── Attempt prompt mirror ──────────────────────────────────
   try {
-    // Check for user-configured override
-    const config = vscode.workspace.getConfiguration('bmad');
-    const configuredBmadDir = config.get<string>('bmadDir');
     const bmadDir = configuredBmadDir || findBmadDir(workspaceRoot);
     if (bmadDir) {
       const result = await ensureCopilotPrompts({ workspaceRoot, bmadDir });
@@ -211,9 +212,6 @@ async function performScanWithMirror(
 
   // ── Normal scan (picks up mirrored files) ──────────────────
   try {
-    // Read bmadDir config again for the scan call
-    const config = vscode.workspace.getConfiguration('bmad');
-    const configuredBmadDir = config.get<string>('bmadDir');
     const state = await registry.scan(workspaceRoot, configuredBmadDir || undefined);
     if (!state) {
       log(outputChannel, 'Scan returned null — _bmad/ not found.');
