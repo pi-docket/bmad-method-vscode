@@ -291,6 +291,10 @@ export class BmadRuntime {
   /**
    * Build a status summary of the current BMAD installation.
    *
+   * ⚠️ **SECURITY WARNING**: This function includes config.yaml excerpts
+   * (up to 500 chars per module) in the status output sent to the LLM.
+   * Ensure config files do not contain sensitive information.
+   *
    * @returns Formatted status prompt.
    */
   buildStatusPrompt(): string {
@@ -518,6 +522,11 @@ export class BmadRuntime {
    * fields as session variables".
    *
    * Checks multiple config paths in priority order.
+   *
+   * ⚠️ **SECURITY WARNING**: This function reads the entire config.yaml
+   * and includes it in the LLM prompt. **Never store sensitive data**
+   * (API keys, passwords, secrets) in BMAD config files. Use environment
+   * variables or secure credential stores instead.
    *
    * @returns Config-load instruction string.
    */

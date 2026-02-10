@@ -180,7 +180,11 @@ export class CliBridge {
   openTerminal(args: string[], workspaceRoot: string): vscode.Terminal {
     const cli = this.resolveCli(workspaceRoot);
     const fullArgs = [...cli.baseArgs, ...args];
-    const cmdLine = `${cli.command} ${fullArgs.join(' ')}`;
+    
+    // Quote command and args to prevent shell injection and handle spaces
+    const quotedCommand = cli.command.includes(' ') ? `"${cli.command}"` : cli.command;
+    const quotedArgs = fullArgs.map(arg => arg.includes(' ') ? `"${arg}"` : arg);
+    const cmdLine = `${quotedCommand} ${quotedArgs.join(' ')}`;
 
     const terminal = vscode.window.createTerminal({
       name: 'BMAD Install',

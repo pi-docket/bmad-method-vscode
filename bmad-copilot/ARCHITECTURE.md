@@ -1,9 +1,9 @@
 # BMAD Copilot Adapter — Architecture Document
 
-> **Version**: 2.0.0 — Official Alignment  
-> **BMAD-METHOD Compatibility**: ≥ 6.0.0-Beta.8  
+> **Version**: 0.1.1 — Official Alignment  
+> **BMAD-METHOD Compatibility**: ≥ 6.0.0-Beta.1  
 > **VS Code Engine**: ≥ 1.93.0  
-> **Last updated**: 2025-01
+> **Last updated**: 2026-02
 
 ---
 
@@ -32,7 +32,9 @@ GitHub Copilot Chat would consume.
 - ❌ Manage token budgets or truncate prompts
 - ❌ Merge configs or resolve YAML/XML workflows programmatically
 - ❌ Replicate BMAD CLI execution logic
-- ❌ Modify any file in `_bmad/` or `.github/`
+- ❌ Modify any file in `_bmad/` directory (read-only access)
+
+**File Creation Note**: The extension **creates** prompt mirror files in `.github/prompts/` and `.github/agents/` when they don't exist, but **never modifies** existing files in `_bmad/` or overwrites files in `.github/`.
 
 ### Why Not Inline?
 
@@ -85,63 +87,63 @@ official BMAD prompt design.
 
 ### `extension.ts` — Lifecycle
 
-| Responsibility | Detail |
-|---|---|
-| Activation | Triggered by `onChatParticipant:bmad` or `onStartupFinished` |
-| Participant | Registers `@bmad` via `vscode.chat.createChatParticipant()` |
-| Prompt Mirror | Calls `ensureCopilotPrompts()` before scan (claude-code → Copilot) |
-| Initial Scan | Calls `CommandRegistry.scan()` at activation |
-| File Watchers | Monitors `_bmad/**`, `.github/prompts/**`, `.github/agents/**` |
-| Configuration | Reacts to `bmadCopilot.*` setting changes |
-| Manual Rescan | Provides `bmad-copilot.rescan` command |
+| Responsibility | Detail                                                             |
+| -------------- | ------------------------------------------------------------------ |
+| Activation     | Triggered by `onChatParticipant:bmad` or `onStartupFinished`       |
+| Participant    | Registers `@bmad` via `vscode.chat.createChatParticipant()`        |
+| Prompt Mirror  | Calls `ensureCopilotPrompts()` before scan (claude-code → Copilot) |
+| Initial Scan   | Calls `CommandRegistry.scan()` at activation                       |
+| File Watchers  | Monitors `_bmad/**`, `.github/prompts/**`, `.github/agents/**`     |
+| Configuration  | Reacts to `bmadCopilot.*` setting changes                          |
+| Manual Rescan  | Provides `bmad-copilot.rescan` command                             |
 
 ### `chatBridge.ts` — Prompt Executor (Core)
 
-| Responsibility | Detail |
-|---|---|
-| Routing | Maps slash commands (`/help`, `/run`, `/agents`, etc.) to handlers |
+| Responsibility        | Detail                                                               |
+| --------------------- | -------------------------------------------------------------------- |
+| Routing               | Maps slash commands (`/help`, `/run`, `/agents`, etc.) to handlers   |
 | Prompt File Execution | Reads `.prompt.md` / `.agent.md` → strips frontmatter → sends to LLM |
-| CLI Delegation | Delegates `/install` to `CliBridge.openTerminal()` |
-| Free-text | Fuzzy-matches user input to known commands |
-| LLM Streaming | Calls `request.model.sendRequest()` and streams fragments |
+| CLI Delegation        | Delegates `/install` to `CliBridge.openTerminal()`                   |
+| Free-text             | Fuzzy-matches user input to known commands                           |
+| LLM Streaming         | Calls `request.model.sendRequest()` and streams fragments            |
 
 ### `commandRegistry.ts` — Command Index
 
-| Responsibility | Detail |
-|---|---|
-| Discovery | Finds `_bmad/` directory and enumerates modules |
-| CSV Parsing | Zero-dependency parser for 5 manifest CSVs |
+| Responsibility      | Detail                                                                   |
+| ------------------- | ------------------------------------------------------------------------ |
+| Discovery           | Finds `_bmad/` directory and enumerates modules                          |
+| CSV Parsing         | Zero-dependency parser for 5 manifest CSVs                               |
 | Prompt File Mapping | Scans `.github/prompts/` and `.github/agents/` to link files to commands |
-| Name Conversion | `cliToSlash()` / `slashToCli()` bidirectional mapping |
-| Fuzzy Search | Case-insensitive substring matching across names/descriptions |
+| Name Conversion     | `cliToSlash()` / `slashToCli()` bidirectional mapping                    |
+| Fuzzy Search        | Case-insensitive substring matching across names/descriptions            |
 
 ### `cliBridge.ts` — CLI Process Spawner
 
-| Responsibility | Detail |
-|---|---|
-| Terminal | Opens VS Code terminal with `npx bmad-method install` |
-| Detection | Checks for `_bmad/`, `.github/prompts/`, `.github/agents/` |
-| Version | Queries `npx bmad-method --version` |
+| Responsibility | Detail                                                     |
+| -------------- | ---------------------------------------------------------- |
+| Terminal       | Opens VS Code terminal with `npx bmad-method install`      |
+| Detection      | Checks for `_bmad/`, `.github/prompts/`, `.github/agents/` |
+| Version        | Queries `npx bmad-method --version`                        |
 
 ### `bmadRuntime.ts` — Legacy Fallback (Deprecated)
 
-| Responsibility | Detail |
-|---|---|
-| **Status** | **@deprecated** — only used when `.github/prompts/` files are missing |
-| Prompt Building | Builds prompts directly from `_bmad/` manifests |
-| Use Case | Workspaces installed without `--tools github-copilot` or `--tools claude-code` |
+| Responsibility  | Detail                                                                         |
+| --------------- | ------------------------------------------------------------------------------ |
+| **Status**      | **@deprecated** — only used when `.github/prompts/` files are missing          |
+| Prompt Building | Builds prompts directly from `_bmad/` manifests                                |
+| Use Case        | Workspaces installed without `--tools github-copilot` or `--tools claude-code` |
 
 ### `promptMirror.ts` — Prompt Mirror (claude-code → Copilot)
 
-| Responsibility | Detail |
-|---|---|
-| Detection | Checks if `.github/prompts/` already has BMAD prompt files |
-| Source Scan | Reads `_bmad/ide/claude-code/prompts/` and `agents/` |
-| File Copy | Copies `.prompt.md` / `.agent.md` to `.github/prompts/` and `.github/agents/` |
-| Filename Sanitise | Converts colons to dashes (e.g. `bmad:bmm:create-prd.prompt.md` → `bmad-bmm-create-prd.prompt.md`) |
-| Frontmatter Transform | Converts `command:` field to `name:` field (colons → dashes); body is never modified |
-| Safety | Never overwrites existing files; uses `fs.promises` with UTF-8 |
-| No CLI Required | Does NOT require Cloud Code CLI — only reads files generated by the BMAD installer |
+| Responsibility        | Detail                                                                                             |
+| --------------------- | -------------------------------------------------------------------------------------------------- |
+| Detection             | Checks if `.github/prompts/` already has BMAD prompt files                                         |
+| Source Scan           | Reads `_bmad/ide/claude-code/prompts/` and `agents/`                                               |
+| File Copy             | Copies `.prompt.md` / `.agent.md` to `.github/prompts/` and `.github/agents/`                      |
+| Filename Sanitise     | Converts colons to dashes (e.g. `bmad:bmm:create-prd.prompt.md` → `bmad-bmm-create-prd.prompt.md`) |
+| Frontmatter Transform | Converts `command:` field to `name:` field (colons → dashes); body is never modified               |
+| Safety                | Never overwrites existing files; uses `fs.promises` with UTF-8                                     |
+| No CLI Required       | Does NOT require Cloud Code CLI — only reads files generated by the BMAD installer                 |
 
 ---
 
@@ -199,12 +201,12 @@ chatBridge.ts :: executeCommand()
 
 ### CLI ↔ Slash Conversion
 
-| CLI Syntax | Slash Syntax | Category |
-|---|---|---|
-| `bmad:agent:bmm:pm` | `bmad-agent-bmm-pm` | Agent |
-| `bmad:bmm:create-prd` | `bmad-bmm-create-prd` | Module Workflow |
-| `bmad:help` | `bmad-help` | Core Task |
-| `bmad:create-next-story` | `bmad-create-next-story` | Core Workflow |
+| CLI Syntax               | Slash Syntax             | Category        |
+| ------------------------ | ------------------------ | --------------- |
+| `bmad:agent:bmm:pm`      | `bmad-agent-bmm-pm`      | Agent           |
+| `bmad:bmm:create-prd`    | `bmad-bmm-create-prd`    | Module Workflow |
+| `bmad:help`              | `bmad-help`              | Core Task       |
+| `bmad:create-next-story` | `bmad-create-next-story` | Core Workflow   |
 
 **Rule**: Replace `:` with `-` for Copilot; replace `-` with `:` for CLI.
 
@@ -218,19 +220,20 @@ registration**. All commands must be declared statically in `package.json`.
 We declare **7 static gateway commands** that delegate to the dynamic
 registry at runtime:
 
-| Static Command | Mode | Behaviour |
-|---|---|---|
-| `/install` | CLI Bridge | Opens terminal → `npx bmad-method install` |
-| `/status` | Built-in + CLI | Shows installation health table |
-| `/help` | Built-in | Lists commands + optional LLM help |
-| `/run <name>` | Prompt Executor | Reads `.prompt.md` / `.agent.md` → LLM |
-| `/agents` | Built-in | Lists installed agents |
-| `/workflows` | Built-in | Lists installed workflows |
-| `/tasks` | Built-in | Lists installed tasks and tools |
+| Static Command | Mode            | Behaviour                                  |
+| -------------- | --------------- | ------------------------------------------ |
+| `/install`     | CLI Bridge      | Opens terminal → `npx bmad-method install` |
+| `/status`      | Built-in + CLI  | Shows installation health table            |
+| `/help`        | Built-in        | Lists commands + optional LLM help         |
+| `/run <name>`  | Prompt Executor | Reads `.prompt.md` / `.agent.md` → LLM     |
+| `/agents`      | Built-in        | Lists installed agents                     |
+| `/workflows`   | Built-in        | Lists installed workflows                  |
+| `/tasks`       | Built-in        | Lists installed tasks and tools            |
 
 ### Free-text Fallback
 
 When the user types to `@bmad` without a slash command:
+
 1. If input starts with `bmad-`, attempt exact command match → execute.
 2. Otherwise, inject BMAD context and forward to LLM as free chat.
 
@@ -240,46 +243,85 @@ When the user types to `@bmad` without a slash command:
 
 ### High Priority
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **Static command limitation** | Cannot register individual slash commands | Hybrid `/run <name>` gateway + fuzzy free-text matching |
-| **LLM file access** | LLM via `sendRequest()` may not resolve `{project-root}` like native Copilot | Documented limitation; fallback to BmadRuntime if needed |
-| **BMAD version drift** | CSV schema changes may break parsing | Defensive parsing with fallback defaults |
+| Risk                          | Impact                                                                       | Mitigation                                               |
+| ----------------------------- | ---------------------------------------------------------------------------- | -------------------------------------------------------- |
+| **Static command limitation** | Cannot register individual slash commands                                    | Hybrid `/run <name>` gateway + fuzzy free-text matching  |
+| **LLM file access**           | LLM via `sendRequest()` may not resolve `{project-root}` like native Copilot | Documented limitation; fallback to BmadRuntime if needed |
+| **BMAD version drift**        | CSV schema changes may break parsing                                         | Defensive parsing with fallback defaults                 |
+| **Config file exposure**      | `config.yaml` content is sent to LLM; may leak sensitive data                | **Never store secrets in config files**; use env vars    |
 
 ### Medium Priority
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **Prompt fidelity** | LLM interpretation differs from CLI execution | Pass official prompts unmodified |
-| **Race conditions on rescan** | Rapid file changes trigger multiple scans | Debounce timer (2 s); scan is atomic |
-| **Multi-root workspaces** | Extension only reads first workspace folder | Document limitation |
+| Risk                          | Impact                                        | Mitigation                           |
+| ----------------------------- | --------------------------------------------- | ------------------------------------ |
+| **Prompt fidelity**           | LLM interpretation differs from CLI execution | Pass official prompts unmodified     |
+| **Race conditions on rescan** | Rapid file changes trigger multiple scans     | Debounce timer (2 s); scan is atomic |
+| **Multi-root workspaces**     | Extension only reads first workspace folder   | Document limitation                  |
 
 ### Low Priority
 
-| Risk | Impact | Mitigation |
-|------|--------|------------|
-| **No offline LLM** | Requires Copilot + internet | Not solvable at this layer |
+| Risk                     | Impact                                           | Mitigation                               |
+| ------------------------ | ------------------------------------------------ | ---------------------------------------- |
+| **No offline LLM**       | Requires Copilot + internet                      | Not solvable at this layer               |
 | **Missing prompt files** | `--tools github-copilot` not used during install | Fallback to BmadRuntime + clear guidance |
 
 ---
 
 ## 8. File Manifest
 
-| File | Purpose | Status |
-|------|---------|--------|
-| `src/extension.ts` | Activation, watchers, participant registration | Active |
-| `src/chatBridge.ts` | Prompt executor, slash command routing | Active (core) |
-| `src/commandRegistry.ts` | CSV scanning, prompt file mapping | Active |
-| `src/cliBridge.ts` | CLI process spawner (`install`, `status`) | Active |
-| `src/promptMirror.ts` | claude-code → Copilot prompt file mirror | Active |
-| `src/bmadRuntime.ts` | Legacy prompt builder from `_bmad/` manifests | **@deprecated** |
-| `src/types.ts` | Shared interfaces and types | Active |
-| `package.json` | Extension manifest | Active |
-| `tsconfig.json` | TypeScript configuration | Active |
+| File                     | Purpose                                        | Status          |
+| ------------------------ | ---------------------------------------------- | --------------- |
+| `src/extension.ts`       | Activation, watchers, participant registration | Active          |
+| `src/chatBridge.ts`      | Prompt executor, slash command routing         | Active (core)   |
+| `src/commandRegistry.ts` | CSV scanning, prompt file mapping              | Active          |
+| `src/cliBridge.ts`       | CLI process spawner (`install`, `status`)      | Active          |
+| `src/promptMirror.ts`    | claude-code → Copilot prompt file mirror       | Active          |
+| `src/bmadRuntime.ts`     | Legacy prompt builder from `_bmad/` manifests  | **@deprecated** |
+| `src/types.ts`           | Shared interfaces and types                    | Active          |
+| `package.json`           | Extension manifest                             | Active          |
+| `tsconfig.json`          | TypeScript configuration                       | Active          |
 
 ---
 
-## 9. Future Roadmap
+## 9. Security Best Practices
+
+⚠️ **Configuration File Security**
+
+The extension reads BMAD configuration files (`_bmad/*/config.yaml`) and
+includes their content in prompts sent to the GitHub Copilot LLM. This is
+necessary for the LLM to understand project-specific settings and variables.
+
+**Important Guidelines:**
+
+1. **Never store sensitive data** in BMAD config files:
+   - ❌ API keys, tokens, passwords
+   - ❌ Database credentials
+   - ❌ Private keys or certificates
+   - ❌ Personal identifiable information (PII)
+
+2. **Use environment variables** for secrets:
+   ```yaml
+   # ✅ Good - reference environment variables
+   api_endpoint: "https://api.example.com"
+   auth_method: "env:API_TOKEN"
+   
+   # ❌ Bad - hardcoded secrets
+   api_key: "sk-1234567890abcdef"
+   ```
+
+3. **Config file scope:**
+   - The extension sends full `config.yaml` content to the LLM
+   - Status commands include 500-char excerpts from each module config
+   - Assume all config content is visible to the AI model
+
+4. **Recommended practices:**
+   - Store only non-sensitive configuration: file paths, flags, workflow settings
+   - Use `.gitignore` to exclude any local config overrides
+   - Review config files before committing to version control
+
+---
+
+## 10. Future Roadmap
 
 1. **Multi-root workspace support** — scan all workspace folders.
 2. **Follow-up message handling** — maintain conversation state per command.

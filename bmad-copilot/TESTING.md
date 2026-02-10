@@ -20,7 +20,7 @@ npm install
 npm run compile
 ```
 
-Verify: no TypeScript errors. The `out/` directory should contain compiled `.js` files.
+Verify: no TypeScript errors. The `dist/` directory should contain compiled `.js` files.
 
 ---
 

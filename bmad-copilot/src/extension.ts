@@ -17,6 +17,8 @@
  */
 
 import * as vscode from 'vscode';
+import * as fs from 'node:fs';
+import * as path from 'node:path';
 import { CommandRegistry } from './commandRegistry.js';
 import { CliBridge } from './cliBridge.js';
 import { ChatBridge } from './chatBridge.js';
@@ -184,7 +186,10 @@ async function performScanWithMirror(
 ): Promise<number> {
   // ── Attempt prompt mirror ──────────────────────────────────
   try {
-    const bmadDir = findBmadDir(workspaceRoot);
+    // Check for user-configured override
+    const config = vscode.workspace.getConfiguration('bmad');
+    const configuredBmadDir = config.get<string>('bmadDir');
+    const bmadDir = configuredBmadDir || findBmadDir(workspaceRoot);
     if (bmadDir) {
       const result = await ensureCopilotPrompts({ workspaceRoot, bmadDir });
       if (result.alreadyExists) {
@@ -206,7 +211,10 @@ async function performScanWithMirror(
 
   // ── Normal scan (picks up mirrored files) ──────────────────
   try {
-    const state = await registry.scan(workspaceRoot);
+    // Read bmadDir config again for the scan call
+    const config = vscode.workspace.getConfiguration('bmad');
+    const configuredBmadDir = config.get<string>('bmadDir');
+    const state = await registry.scan(workspaceRoot, configuredBmadDir || undefined);
     if (!state) {
       log(outputChannel, 'Scan returned null — _bmad/ not found.');
       return 0;
@@ -230,8 +238,6 @@ async function performScanWithMirror(
  * Locate the `_bmad` directory in the workspace.
  */
 function findBmadDir(workspaceRoot: string): string | null {
-  const fs = require('node:fs');
-  const path = require('node:path');
   const candidate = path.join(workspaceRoot, '_bmad');
   if (fs.existsSync(candidate)) return candidate;
   const parent = path.dirname(workspaceRoot);

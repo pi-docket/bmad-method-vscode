@@ -48,7 +48,8 @@ function parseCsv<T extends Record<string, string>>(csv: string): T[] {
     return [];
   }
 
-  const headers = parseCsvLine(lines[0]);
+  // Trim headers to handle CRLF line endings on Windows
+  const headers = parseCsvLine(lines[0]).map(h => h.trim());
   const records: T[] = [];
 
   for (let i = 1; i < lines.length; i++) {
@@ -127,6 +128,11 @@ export function cliToSlash(cli: string): string {
  * The algorithm is intentionally conservative: it only replaces the
  * structural dashes that separate `bmad`, module, type-prefix
  * (`agent`), and the trailing name — everything else stays as-is.
+ *
+ * **Limitation:** For core agents with hyphenated names (e.g., `tech-writer`),
+ * the slash name `bmad-agent-tech-writer` is ambiguous and may be incorrectly
+ * parsed as module=tech, name=writer. This affects only the display `cliSyntax`
+ * field and does not impact command execution.
  *
  * @example
  * slashToCli('bmad-bmm-create-prd') // → 'bmad:bmm:create-prd'
@@ -291,8 +297,9 @@ export class CommandRegistry {
     };
 
     // --- Scan .github/prompts/ and .github/agents/ ---
-    const workspaceDir = path.dirname(bmadDir); // bmadDir is <root>/_bmad
-    this.scanCopilotPromptFiles(workspaceDir, commands);
+    // Use workspaceRoot directly instead of deriving from bmadDir
+    // to support overrideBmadDir pointing to non-standard locations
+    this.scanCopilotPromptFiles(workspaceRoot, commands);
 
     return this._state;
   }
@@ -316,7 +323,7 @@ export class CommandRegistry {
    *
    * @param query - Free-text search string.
    * @param limit - Maximum results to return (default 20).
-   * @returns Matching commands sorted by relevance.
+   * @returns Matching commands in Map iteration order (not scored by relevance).
    */
   search(query: string, limit = 20): BmadCommand[] {
     if (!this._state) {

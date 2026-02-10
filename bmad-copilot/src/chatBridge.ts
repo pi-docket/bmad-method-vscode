@@ -150,7 +150,8 @@ export class ChatBridge {
       const state = this.registry.state;
 
       // --- Installation guard ---
-      if (!state && request.command !== 'install') {
+      // Allow /status and /install to run even when state is null
+      if (!state && request.command !== 'install' && request.command !== 'status') {
         stream.markdown(MISSING_INSTALL_MESSAGE);
         return {};
       }
@@ -362,8 +363,8 @@ export class ChatBridge {
    * **Execution strategy:**
    * 1. Resolve command from the registry.
    * 2. If an official `.prompt.md` or `.agent.md` file exists →
-   *    read it, pre-resolve all `{project-root}` file references,
-   *    inline their content, and send the compiled prompt to the LLM.
+   *    read it and send the prompt **as-is** to the LLM. The LLM
+   *    resolves `{project-root}` references via its own workspace context.
    * 3. If no prompt file → fall back to BmadRuntime prompt builder
    *    (reads from `_bmad/` directly).
    */
