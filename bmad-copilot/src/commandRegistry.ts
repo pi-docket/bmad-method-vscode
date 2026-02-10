@@ -565,9 +565,8 @@ export class CommandRegistry {
             }
           }
         }
-      } catch (err) {
+      } catch {
         // Ignore permission or access errors on .github/prompts/
-        this.outputChannel.appendLine(`Warning: Could not read .github/prompts/ — ${err}`);
       }
     }
 
@@ -596,9 +595,8 @@ export class CommandRegistry {
             }
           }
         }
-      } catch (err) {
+      } catch {
         // Ignore permission or access errors on .github/agents/
-        this.outputChannel.appendLine(`Warning: Could not read .github/agents/ — ${err}`);
       }
     }
 
