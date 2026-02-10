@@ -99,13 +99,13 @@ official BMAD prompt design.
 
 ### `chatBridge.ts` — Prompt Executor (Core)
 
-| Responsibility        | Detail                                                               |
-| --------------------- | -------------------------------------------------------------------- |
-| Routing               | Maps slash commands (`/help`, `/run`, `/agents`, etc.) to handlers   |
+| Responsibility        | Detail                                                                                              |
+| --------------------- | --------------------------------------------------------------------------------------------------- |
+| Routing               | Maps slash commands (`/help`, `/run`, `/agents`, etc.) to handlers                                  |
 | Prompt File Execution | Reads `.prompt.md` / `.agent.md` → strips frontmatter → sends raw prompt to LLM (no ref resolution) |
-| CLI Delegation        | Delegates `/install` to `CliBridge.openTerminal()`                   |
-| Free-text             | Fuzzy-matches user input to known commands                           |
-| LLM Streaming         | Calls `request.model.sendRequest()` and streams fragments            |
+| CLI Delegation        | Delegates `/install` to `CliBridge.openTerminal()`                                                  |
+| Free-text             | Fuzzy-matches user input to known commands                                                          |
+| LLM Streaming         | Calls `request.model.sendRequest()` and streams fragments                                           |
 
 ### `commandRegistry.ts` — Command Index
 
@@ -300,11 +300,12 @@ necessary for the LLM to understand project-specific settings and variables.
    - ❌ Personal identifiable information (PII)
 
 2. **Use environment variables** for secrets:
+
    ```yaml
    # ✅ Good - reference environment variables
    api_endpoint: "https://api.example.com"
    auth_method: "env:API_TOKEN"
-   
+
    # ❌ Bad - hardcoded secrets
    api_key: "sk-1234567890abcdef"
    ```
