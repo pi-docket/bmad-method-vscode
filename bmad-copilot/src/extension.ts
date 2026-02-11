@@ -86,14 +86,17 @@ export async function activate(
 
   if (workspaceRoot) {
     const promptsDir = require('node:path').join(workspaceRoot, '.github', 'prompts');
+    const agentsDir = require('node:path').join(workspaceRoot, '.github', 'agents');
     const bmadDirLocal = require('node:path').join(workspaceRoot, '_bmad');
 
     const hasBmadDir = fs.existsSync(bmadDirLocal);
     const hasPrompts = fs.existsSync(promptsDir) &&
       fs.readdirSync(promptsDir).some((f: string) => f.startsWith('bmad') && f.endsWith('.prompt.md'));
+    const hasAgents = fs.existsSync(agentsDir) &&
+      fs.readdirSync(agentsDir).some((f: string) => f.startsWith('bmad-agent') && f.endsWith('.md'));
 
-    if (hasBmadDir && !hasPrompts) {
-      log(outputChannel, 'Prompt integrity check: _bmad/ exists but .github/prompts/ missing — notifying user.');
+    if (hasBmadDir && !hasPrompts && !hasAgents) {
+      log(outputChannel, 'Prompt integrity check: _bmad/ exists but .github/prompts/ and .github/agents/ missing — notifying user.');
       vscode.window.showWarningMessage(
         'BMAD Copilot: Prompt files missing. Use @bmad /update or run `npx bmad-copilot-adapter update` to sync.',
         'Run Update',

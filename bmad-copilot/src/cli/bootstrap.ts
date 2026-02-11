@@ -109,14 +109,14 @@ export async function bootstrap(options: BootstrapOptions): Promise<void> {
     const hasPrompts = fs.existsSync(promptsDir) && hasBmadFiles(promptsDir);
     const hasAgents = fs.existsSync(agentsDir) && hasBmadAgentFiles(agentsDir);
 
-    if (hasPrompts) {
-      const pCount = countBmadFiles(promptsDir);
+    if (hasPrompts || hasAgents) {
+      const pCount = hasPrompts ? countBmadFiles(promptsDir) : 0;
       const aCount = hasAgents ? countBmadAgentFiles(agentsDir) : 0;
       stepOk(`Found ${pCount} prompt file(s), ${aCount} agent file(s)`);
-      results.push({ ok: true, message: 'Prompts found' });
+      results.push({ ok: true, message: 'Prompts/agents found' });
     } else {
       // Warn — do NOT auto-install. User must run the official CLI.
-      stepFail('.github/prompts/ not found or contains no BMAD files');
+      stepFail('.github/prompts/ and .github/agents/ not found or contain no BMAD files');
       console.log('');
       console.log(FMT.yellow('  You must install prompts with the official BMAD CLI first:'));
       console.log(FMT.dim('    npx bmad-method install'));
@@ -124,7 +124,7 @@ export async function bootstrap(options: BootstrapOptions): Promise<void> {
       console.log('');
       results.push({
         ok: false,
-        message: '.github/prompts/ missing — run: npx bmad-method install',
+        message: '.github/prompts/ or .github/agents/ missing — run: npx bmad-method install',
       });
     }
   }
@@ -229,14 +229,12 @@ function checkNodeVersion(): StepResult {
  */
 function detectVsCodeCli(): StepResult {
   const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'code.cmd' : 'code';
 
   try {
-    const result = cp.spawnSync(cmd, ['--version'], {
-      timeout: 10000,
-      shell: isWindows,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    // Avoid DEP0190: don't pass args array when shell is true
+    const result = isWindows
+      ? cp.spawnSync('code.cmd --version', { timeout: 10000, shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
+      : cp.spawnSync('code', ['--version'], { timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
 
     if (result.status === 0) {
       const version = result.stdout?.toString().trim().split('\n')[0] ?? 'unknown';
@@ -261,17 +259,14 @@ function detectVsCodeCli(): StepResult {
  * Step 5: Install the BMAD Copilot Adapter extension.
  */
 async function installExtension(): Promise<StepResult> {
-  const extensionId = 'bmad-code-org.bmad-copilot-adapter';
+  const extensionId = 'evil9369.bmad-copilot-adapter';
   const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'code.cmd' : 'code';
 
-  // Check if already installed
+  // Check if already installed (avoid DEP0190: no args array with shell:true)
   try {
-    const listResult = cp.spawnSync(cmd, ['--list-extensions'], {
-      timeout: 15000,
-      shell: isWindows,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    const listResult = isWindows
+      ? cp.spawnSync('code.cmd --list-extensions', { timeout: 15000, shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
+      : cp.spawnSync('code', ['--list-extensions'], { timeout: 15000, stdio: ['ignore', 'pipe', 'pipe'] });
 
     if (listResult.status === 0) {
       const extensions = listResult.stdout?.toString() ?? '';
@@ -290,11 +285,10 @@ async function installExtension(): Promise<StepResult> {
   return new Promise<StepResult>((resolve) => {
     stepInfo(`Installing extension: ${extensionId}`);
 
-    const proc = cp.spawn(cmd, ['--install-extension', extensionId], {
-      timeout: 60000,
-      shell: isWindows,
-      stdio: 'inherit',
-    });
+    // Avoid DEP0190: on Windows, pass full command string to shell
+    const proc = isWindows
+      ? cp.spawn(`code.cmd --install-extension ${extensionId}`, { timeout: 60000, shell: true, stdio: 'inherit' })
+      : cp.spawn('code', ['--install-extension', extensionId], { timeout: 60000, stdio: 'inherit' });
 
     proc.on('close', (code) => {
       if (code === 0) {
@@ -333,8 +327,8 @@ function validateCopilotRegistration(cwd: string): StepResult {
   const hasPrompts = fs.existsSync(promptsDir) && hasBmadFiles(promptsDir);
   const hasAgents = fs.existsSync(agentsDir) && hasBmadAgentFiles(agentsDir);
 
-  if (hasPrompts) {
-    const count = countBmadFiles(promptsDir) + (hasAgents ? countBmadAgentFiles(agentsDir) : 0);
+  if (hasPrompts || hasAgents) {
+    const count = (hasPrompts ? countBmadFiles(promptsDir) : 0) + (hasAgents ? countBmadAgentFiles(agentsDir) : 0);
     return {
       ok: true,
       message: `Copilot integration ready (${count} BMAD file(s) detected)`,
@@ -371,7 +365,7 @@ function hasBmadFiles(dir: string): boolean {
 
 function hasBmadAgentFiles(dir: string): boolean {
   try {
-    return fs.readdirSync(dir).some((f) => f.startsWith('bmad') && f.endsWith('.agent.md'));
+    return fs.readdirSync(dir).some((f) => f.startsWith('bmad-agent') && f.endsWith('.md'));
   } catch {
     return false;
   }
@@ -387,7 +381,7 @@ function countBmadFiles(dir: string): number {
 
 function countBmadAgentFiles(dir: string): number {
   try {
-    return fs.readdirSync(dir).filter((f) => f.startsWith('bmad') && f.endsWith('.agent.md')).length;
+    return fs.readdirSync(dir).filter((f) => f.startsWith('bmad-agent') && f.endsWith('.md')).length;
   } catch {
     return 0;
   }

@@ -8,6 +8,8 @@ src/
 .github/
 out/
 node_modules/
+scripts/
+releases/
 
 # Testing
 TESTING.md
@@ -18,4 +20,5 @@ tsconfig.json
 .vscodeignore
 .eslintrc*
 .prettierrc*
+.gitignore
 .editorconfig

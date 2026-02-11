@@ -614,7 +614,7 @@ export class ChatBridge {
     this.log(`No prompt file for ${command.slashName}`);
     stream.markdown(
       `⚠️ **No prompt file found** for \`${command.slashName}\`.\n\n` +
-        'The official `.prompt.md` / `.agent.md` file is missing from `.github/prompts/`.\n\n' +
+        'The official prompt/agent file is missing from `.github/prompts/` or `.github/agents/`.\n\n' +
         'Run the BMAD installer to generate it:\n' +
         '```bash\nnpx bmad-method install --tools github-copilot --yes\n```\n\n' +
         '> Then use `@bmad /update` to refresh the command registry.',

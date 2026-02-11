@@ -93,7 +93,7 @@ export async function status(options: StatusOptions): Promise<void> {
 
   // ── 5. .github/agents/ ──────────────────────────────────────
   const agentsDir = path.join(cwd, '.github', 'agents');
-  const agentFiles = listBmadFiles(agentsDir, '.agent.md');
+  const agentFiles = listBmadAgentFiles(agentsDir);
   printCheck('.github/agents/', agentFiles.length > 0 ? `${agentFiles.length} file(s)` : 'Empty or missing', agentFiles.length > 0);
 
   // ── 6. Claude-code source (informational only) ─────────────
@@ -182,16 +182,23 @@ function listBmadFiles(dir: string, suffix: string): string[] {
   }
 }
 
+function listBmadAgentFiles(dir: string): string[] {
+  try {
+    if (!fs.existsSync(dir)) return [];
+    return fs.readdirSync(dir).filter((f) => f.startsWith('bmad-agent') && f.endsWith('.md'));
+  } catch {
+    return [];
+  }
+}
+
 function detectVsCode(): { available: boolean; version: string | null } {
   const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'code.cmd' : 'code';
 
   try {
-    const result = cp.spawnSync(cmd, ['--version'], {
-      timeout: 10000,
-      shell: isWindows,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    // Avoid DEP0190: don't pass args array when shell is true
+    const result = isWindows
+      ? cp.spawnSync('code.cmd --version', { timeout: 10000, shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
+      : cp.spawnSync('code', ['--version'], { timeout: 10000, stdio: ['ignore', 'pipe', 'pipe'] });
 
     if (result.status === 0) {
       const version = result.stdout?.toString().trim().split('\n')[0] ?? null;
@@ -206,15 +213,13 @@ function detectVsCode(): { available: boolean; version: string | null } {
 
 function checkExtensionInstalled(): boolean {
   const isWindows = process.platform === 'win32';
-  const cmd = isWindows ? 'code.cmd' : 'code';
-  const extensionId = 'bmad-code-org.bmad-copilot-adapter';
+  const extensionId = 'evil9369.bmad-copilot-adapter';
 
   try {
-    const result = cp.spawnSync(cmd, ['--list-extensions'], {
-      timeout: 15000,
-      shell: isWindows,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
+    // Avoid DEP0190: don't pass args array when shell is true
+    const result = isWindows
+      ? cp.spawnSync('code.cmd --list-extensions', { timeout: 15000, shell: true, stdio: ['ignore', 'pipe', 'pipe'] })
+      : cp.spawnSync('code', ['--list-extensions'], { timeout: 15000, stdio: ['ignore', 'pipe', 'pipe'] });
 
     if (result.status === 0) {
       return result.stdout?.toString().toLowerCase().includes(extensionId.toLowerCase()) ?? false;

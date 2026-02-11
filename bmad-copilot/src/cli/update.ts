@@ -80,7 +80,7 @@ export async function update(options: UpdateOptions): Promise<void> {
   if (fs.existsSync(agentsDir)) {
     try {
       const files = fs.readdirSync(agentsDir).filter(
-        (f) => f.startsWith('bmad') && f.endsWith('.agent.md'),
+        (f) => f.startsWith('bmad-agent') && f.endsWith('.md'),
       );
       agentCount = files.length;
     } catch { /* ignore */ }

@@ -1,5 +1,24 @@
 # Changelog
 
+## [0.2.4] — 2026-02-11
+
+### Fixed
+
+- **Critical: Agent file detection** — BMAD v6 generates `bmad-agent-*.md` files (not `*.agent.md`). Updated file pattern matching across all modules:
+  - `commandRegistry.ts` — agent scan now matches `bmad-agent-*.md` in `.github/agents/`
+  - `extension.ts` — integrity check now accepts `.github/agents/` (not just `.github/prompts/`)
+  - `chatBridge.ts` — error message now references both `.github/prompts/` and `.github/agents/`
+  - `cli/bootstrap.ts` — detects `bmad-agent-*.md` pattern
+  - `cli/update.ts` — counts agent files correctly
+  - `cli/status.ts` — lists agent files correctly
+
+### Changed
+
+- `README.md` — Updated for BMAD v6 structure (`.github/agents/` is primary, `.github/prompts/` is secondary)
+- `ARCHITECTURE.md` — Updated version to 0.2.4, corrected agent file references
+- Publisher changed to `evil9369` (extension ID: `evil9369.bmad-copilot-adapter`)
+- DEP0190 deprecation warning fixed in CLI (Windows `child_process` shell commands)
+
 ## [0.2.0] — 2026-02-11
 
 ### Added

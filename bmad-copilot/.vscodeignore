@@ -2,6 +2,7 @@
 .github/**
 src/**
 out/**
+releases
 releases/**
 scripts/**
 node_modules/**

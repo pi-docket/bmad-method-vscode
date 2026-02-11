@@ -603,28 +603,22 @@ export class CommandRegistry {
       }
     }
 
-    // Scan .github/agents/*.agent.md
+    // Scan .github/agents/bmad-agent-*.md
     const agentsDir = path.join(workspaceRoot, '.github', 'agents');
     if (fs.existsSync(agentsDir)) {
       try {
         for (const file of fs.readdirSync(agentsDir)) {
-          if (file.startsWith('bmad') && file.endsWith('.agent.md')) {
-            // "bmad-bmm-agents-pm.agent.md" → "bmad-bmm-agents-pm"
-            const slashName = file.replace(/\.agent\.md$/, '');
+          if (file.startsWith('bmad-agent') && file.endsWith('.md')) {
+            // "bmad-agent-bmm-pm.md" → "bmad-agent-bmm-pm"
+            const slashName = file.replace(/\.md$/, '');
             const absPath = path.join(agentsDir, file);
             promptFiles.set(slashName, absPath);
             foundAny = true;
 
-            // Try to link to existing agent command
-            // Agent files use bmad-<module>-agents-<name> format
-            // while commands use bmad-agent-<module>-<name>
-            const agentMatch = slashName.match(/^bmad-([^-]+)-agents-(.+)$/);
-            if (agentMatch) {
-              const agentSlash = `bmad-agent-${agentMatch[1]}-${agentMatch[2]}`;
-              const cmd = commands.get(agentSlash);
-              if (cmd) {
-                cmd.promptFilePath = absPath;
-              }
+            // Link to existing agent command if present
+            const cmd = commands.get(slashName);
+            if (cmd) {
+              cmd.promptFilePath = absPath;
             }
           }
         }
