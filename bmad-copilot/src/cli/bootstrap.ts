@@ -359,8 +359,9 @@ function validateCopilotRegistration(cwd: string): StepResult {
   const hasBmadDir = fs.existsSync(path.join(cwd, '_bmad'));
   if (hasBmadDir) {
     return {
-      ok: true,
+      ok: false,
       message: 'Copilot integration ready (_bmad/ found; run `npx bmad-method install --tools github-copilot` to generate prompts)',
+      skipped: true,
     };
   }
 

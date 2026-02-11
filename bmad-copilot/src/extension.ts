@@ -90,10 +90,26 @@ export async function activate(
     const bmadDirLocal = require('node:path').join(workspaceRoot, '_bmad');
 
     const hasBmadDir = fs.existsSync(bmadDirLocal);
-    const hasPrompts = fs.existsSync(promptsDir) &&
-      fs.readdirSync(promptsDir).some((f: string) => f.startsWith('bmad') && f.endsWith('.prompt.md'));
-    const hasAgents = fs.existsSync(agentsDir) &&
-      fs.readdirSync(agentsDir).some((f: string) => f.startsWith('bmad-agent') && f.endsWith('.md'));
+    
+    let hasPrompts = false;
+    if (fs.existsSync(promptsDir)) {
+      try {
+        hasPrompts = fs.readdirSync(promptsDir).some((f: string) => f.startsWith('bmad') && f.endsWith('.prompt.md'));
+      } catch (err) {
+        log(outputChannel, `Failed to read ${promptsDir}: ${err instanceof Error ? err.message : String(err)}`);
+        hasPrompts = false;
+      }
+    }
+    
+    let hasAgents = false;
+    if (fs.existsSync(agentsDir)) {
+      try {
+        hasAgents = fs.readdirSync(agentsDir).some((f: string) => f.startsWith('bmad-agent') && f.endsWith('.md'));
+      } catch (err) {
+        log(outputChannel, `Failed to read ${agentsDir}: ${err instanceof Error ? err.message : String(err)}`);
+        hasAgents = false;
+      }
+    }
 
     if (hasBmadDir && !hasPrompts && !hasAgents) {
       log(outputChannel, 'Prompt integrity check: _bmad/ exists but .github/prompts/ and .github/agents/ missing — notifying user.');
