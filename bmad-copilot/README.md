@@ -132,11 +132,11 @@ npx bmad-copilot-adapter --version   # Show adapter version
 npx bmad-copilot-adapter --help      # Show CLI help
 ```
 
-| Command     | Purpose                                                                |
-| ----------- | ---------------------------------------------------------------------- |
-| `bootstrap` | Verify Node ≥18, check prompts, install extension, print summary       |
+| Command     | Purpose                                                                            |
+| ----------- | ---------------------------------------------------------------------------------- |
+| `bootstrap` | Verify Node ≥18, check prompts, install extension, print summary                   |
 | `update`    | Rescan `.github/agents/` & `prompts/`, count manifests, write sentinel for VS Code |
-| `status`    | Full diagnostic: Node, `_bmad/`, prompts, CSV health, VS Code          |
+| `status`    | Full diagnostic: Node, `_bmad/`, prompts, CSV health, VS Code                      |
 
 ---
 

@@ -94,15 +94,15 @@ official BMAD prompt design.
 
 ### `extension.ts` — Lifecycle
 
-| Responsibility  | Detail                                                         |
-| --------------- | -------------------------------------------------------------- |
-| Activation      | Triggered by `onChatParticipant:bmad` or `onStartupFinished`   |
-| Participant     | Registers `@bmad` via `vscode.chat.createChatParticipant()`    |
-| Initial Scan    | Calls `CommandRegistry.scan()` at activation                   |
+| Responsibility  | Detail                                                                                 |
+| --------------- | -------------------------------------------------------------------------------------- |
+| Activation      | Triggered by `onChatParticipant:bmad` or `onStartupFinished`                           |
+| Participant     | Registers `@bmad` via `vscode.chat.createChatParticipant()`                            |
+| Initial Scan    | Calls `CommandRegistry.scan()` at activation                                           |
 | Integrity Check | Warns if `_bmad/` exists but `.github/prompts/` and `.github/agents/` are both missing |
-| File Watchers   | Monitors `_bmad/**`, `.github/prompts/**`, `.github/agents/**` |
-| Configuration   | Reacts to `bmad.*` setting changes                             |
-| Commands        | Provides `rescan`, `update`, and `install` VS Code commands    |
+| File Watchers   | Monitors `_bmad/**`, `.github/prompts/**`, `.github/agents/**`                         |
+| Configuration   | Reacts to `bmad.*` setting changes                                                     |
+| Commands        | Provides `rescan`, `update`, and `install` VS Code commands                            |
 
 ### `chatBridge.ts` — Prompt Executor (Core)
 
