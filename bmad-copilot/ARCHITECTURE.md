@@ -227,8 +227,9 @@ chatBridge.ts :: executeCommand()
 | `bmad:help`              | `bmad-help`              | Core Task       |
 | `bmad:create-next-story` | `bmad-create-next-story` | Core Workflow   |
 
-**Rule**: Replace `:` with `-` for Copilot; replace `-` with `:` for CLI.
-
+**Rule**: CLI→Slash: replace all `:` with `-`. Slash→CLI: structural
+dashes only are converted back to `:` (see `slashToCli()` in
+`commandRegistry.ts` for the heuristic).
 ---
 
 ## 7. Static Slash Commands (VS Code Limitation)
