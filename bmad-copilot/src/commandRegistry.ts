@@ -305,6 +305,35 @@ export class CommandRegistry {
   }
 
   /**
+   * Invalidate (clear) the cached registry state.
+   *
+   * After calling this, {@link state} returns `null` until the next
+   * {@link scan} completes. Use this before a forced rescan to ensure
+   * stale data is not served.
+   */
+  invalidate(): void {
+    this._state = null;
+  }
+
+  /**
+   * Convenience method: invalidate + scan in one call.
+   *
+   * Equivalent to:
+   * ```ts
+   * registry.invalidate();
+   * await registry.scan(workspaceRoot, overrideBmadDir);
+   * ```
+   *
+   * @param workspaceRoot - Absolute workspace root path.
+   * @param overrideBmadDir - Optional explicit `_bmad` path.
+   * @returns The new {@link RegistryState}, or `null`.
+   */
+  async rescan(workspaceRoot: string, overrideBmadDir?: string): Promise<RegistryState | null> {
+    this.invalidate();
+    return this.scan(workspaceRoot, overrideBmadDir);
+  }
+
+  /**
    * Look up a command by its slash name.
    *
    * @param slashName - Command name (with or without leading `/`).
@@ -379,7 +408,11 @@ export class CommandRegistry {
    */
   private async loadCsv<T extends { [key: string]: string }>(filePath: string): Promise<T[]> {
     try {
-      const content = await fs.promises.readFile(filePath, 'utf8');
+      let content = await fs.promises.readFile(filePath, 'utf8');
+      // Strip UTF-8 BOM (common on Windows-generated CSV files)
+      if (content.charCodeAt(0) === 0xFEFF) {
+        content = content.slice(1);
+      }
       return parseCsv<T>(content);
     } catch {
       return [];

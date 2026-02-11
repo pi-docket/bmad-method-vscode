@@ -2,7 +2,7 @@
   "name": "bmad-copilot-adapter",
   "displayName": "BMAD Method — Copilot Chat Adapter",
   "description": "Official prompt executor that enables BMAD-METHOD workflows to run natively inside GitHub Copilot Chat. Not a fork — a bridge.",
-  "version": "0.1.2",
+  "version": "0.2.0",
   "publisher": "bmad-code-org",
   "license": "MIT",
   "author": {
@@ -39,9 +39,13 @@
     "onChatParticipant:bmad"
   ],
   "main": "./dist/extension.js",
+  "bin": {
+    "bmad-copilot-adapter": "bin/bmad-copilot-adapter.js"
+  },
   "files": [
     "dist/**/*.js",
     "dist/**/*.d.ts",
+    "bin/bmad-copilot-adapter.js",
     "README.md",
     "LICENSE",
     "ARCHITECTURE.md"
@@ -69,8 +73,7 @@
     "prevsce": "npm run build",
     "vsce:package": "npx @vscode/vsce package --out releases/",
     "vsce:publish": "npx @vscode/vsce publish",
-    "prepublishOnly": "npm run build",
-    "release": "npm run build && npm publish --access public"
+    "prepublishOnly": "npm run build"
   },
   "contributes": {
     "chatParticipants": [
@@ -108,6 +111,10 @@
           {
             "name": "install",
             "description": "Run the BMAD installer in a terminal. Sets up _bmad/ and Copilot prompt files."
+          },
+          {
+            "name": "update",
+            "description": "Rescan prompts, rebuild command map, and refresh Copilot integration."
           }
         ]
       }
@@ -116,6 +123,10 @@
       {
         "command": "bmad-copilot.rescan",
         "title": "BMAD Copilot: Rescan Commands"
+      },
+      {
+        "command": "bmad-copilot.update",
+        "title": "BMAD Copilot: Update (Invalidate + Rescan)"
       },
       {
         "command": "bmad-copilot.install",

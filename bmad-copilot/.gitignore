@@ -6,4 +6,3 @@ releases/
 *.tgz
 .DS_Store
 Thumbs.db
-.github/workflows/release.yml

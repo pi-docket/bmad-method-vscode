@@ -1,5 +1,14 @@
 /**
- * @fileoverview Prompt Mirror — claude-code → GitHub Copilot
+ * @fileoverview Prompt Mirror — DEPRECATED historical module.
+ *
+ * @deprecated **This module is retained for reference only.** The adapter
+ * is a pure read-only bridge and does NOT mirror, convert, or generate
+ * prompt files. The official `npx bmad-method install --tools github-copilot`
+ * is the sole source of truth for `.github/prompts/` and `.github/agents/`.
+ *
+ * No active code imports this module. It will be removed in a future version.
+ *
+ * --- Original description ---
  *
  * When a workspace has BMAD installed with `--tools claude-code` but
  * **not** `--tools github-copilot`, the `.github/prompts/` and

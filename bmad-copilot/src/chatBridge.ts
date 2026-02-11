@@ -14,8 +14,8 @@
  * - For `install` and `status`, the real BMAD CLI is spawned via
  *   {@link CliBridge}.
  * - If `.github/prompts/` files are missing (i.e. BMAD was installed
- *   without `--tools github-copilot`), the legacy {@link BmadRuntime}
- *   fallback is used.
+ *   without `--tools github-copilot`), a clear error message guides
+ *   the user to install prompts via the official CLI.
  *
  * @module chatBridge
  */
@@ -25,8 +25,6 @@ import * as fs from 'node:fs';
 import * as path from 'node:path';
 import { CommandRegistry } from './commandRegistry.js';
 import { CliBridge } from './cliBridge.js';
-import { BmadRuntime } from './bmadRuntime.js';
-import { hasClaudeCodeSource } from './promptMirror.js';
 import type { BmadCommand, RegistryState } from './types.js';
 
 /* ------------------------------------------------------------------ */
@@ -66,17 +64,10 @@ const MISSING_COPILOT_FILES_MESSAGE = `
 
 Your workspace has \`_bmad/\` but no \`.github/prompts/\` or \`.github/agents/\` BMAD files.
 
-The adapter automatically mirrors prompt files from \`claude-code\` if available.
-If both sources are missing, install BMAD with either tool:
+Run the official BMAD installer to generate prompt files:
 
-**Option 1 — claude-code (recommended, works without Cloud Code CLI):**
 \`\`\`bash
-npx bmad-method install --modules bmm --tools claude-code --yes
-\`\`\`
-
-**Option 2 — github-copilot (native):**
-\`\`\`bash
-npx bmad-method install --modules bmm --tools github-copilot --yes
+npx bmad-method install --tools github-copilot --yes
 \`\`\`
 
 > **Note:** Cloud Code CLI is NOT required. Only the generated prompt files are needed.
@@ -136,8 +127,8 @@ export class ChatBridge {
       const state = this.registry.state;
 
       // --- Installation guard ---
-      // Allow /status and /install to run even when state is null
-      if (!state && request.command !== 'install' && request.command !== 'status') {
+      // Allow /status, /install, and /update to run even when state is null
+      if (!state && request.command !== 'install' && request.command !== 'status' && request.command !== 'update') {
         stream.markdown(MISSING_INSTALL_MESSAGE);
         return {};
       }
@@ -147,6 +138,8 @@ export class ChatBridge {
           return this.handleInstall(stream);
         case 'status':
           return this.handleStatus(state, stream);
+        case 'update':
+          return this.handleUpdate(stream);
         case 'help':
           return this.handleHelp(state!, request, stream, token);
         case 'run':
@@ -199,6 +192,37 @@ export class ChatBridge {
   }
 
   /* -------------------------------------------------------------- */
+  /*  /update — Invalidate and rescan                                */
+  /* -------------------------------------------------------------- */
+
+  /**
+   * Handle `/update` — invalidate the cached command registry and
+   * trigger a full rescan. This is the Copilot Chat counterpart
+   * of the CLI `npx bmad-copilot-adapter update` command.
+   */
+  private handleUpdate(
+    stream: vscode.ChatResponseStream,
+  ): vscode.ChatResult {
+    stream.markdown(
+      '🔄 **Updating BMAD command registry…**\n\n' +
+        'Invalidating cache and triggering full rescan.\n\n',
+    );
+
+    // Fire the VS Code command which performs invalidate + mirror + rescan
+    vscode.commands.executeCommand('bmad-copilot.update').then(
+      () => { /* Command executed — UI notification handled by the command */ },
+      (err) => { this.log(`Update command error: ${err}`); },
+    );
+
+    stream.markdown(
+      '✅ Update triggered. The command registry will be refreshed momentarily.\n\n' +
+        '> Use `@bmad /status` to verify the updated state.',
+    );
+
+    return {};
+  }
+
+  /* -------------------------------------------------------------- */
   /*  /status — Built-in + CLI version                               */
   /* -------------------------------------------------------------- */
 
@@ -215,7 +239,6 @@ export class ChatBridge {
     const workspaceRoot = this.getWorkspaceRoot();
     const hasBmad = this.cliBridge.hasBmadInstallation(workspaceRoot);
     const hasCopilot = this.cliBridge.hasCopilotPromptFiles(workspaceRoot);
-    const hasClaudeCode = hasBmad && hasClaudeCodeSource(path.join(workspaceRoot, '_bmad'));
 
     const lines: string[] = ['# BMAD Installation Status\n'];
 
@@ -223,7 +246,6 @@ export class ChatBridge {
     lines.push(`|---|---|`);
     lines.push(`| \`_bmad/\` directory | ${hasBmad ? '✅ Found' : '❌ Missing'} |`);
     lines.push(`| GitHub Copilot prompt files | ${hasCopilot ? '✅ Found' : '⚠️ Missing'} |`);
-    lines.push(`| claude-code prompt source | ${hasClaudeCode ? '✅ Available (auto-mirror)' : '➖ Not found'} |`);
     lines.push(`| Workspace root | \`${workspaceRoot}\` |`);
 
     if (state) {
@@ -558,8 +580,7 @@ export class ChatBridge {
    * **Resolution order:**
    * 1. `command.promptFilePath` — official `.prompt.md` / `.agent.md`
    * 2. `state.promptFiles` — prompt file map from scan
-   * 3. `BmadRuntime` — @deprecated fallback for installs without
-   *    `--tools github-copilot`
+   * 3. If no prompt file exists — show an error with install guidance.
    *
    * The prompt body is passed **as-is** — no file inlining, no
    * `{project-root}` resolution. The LLM reads workspace files
@@ -589,12 +610,16 @@ export class ChatBridge {
       return this.sendToLlm(compiledPrompt, request, stream, token);
     }
 
-    // 2. Fallback: BmadRuntime prompt builder
-    this.log(`No prompt file for ${command.slashName}, falling back to BmadRuntime`);
-    const state = this.registry.state!;
-    const runtime = new BmadRuntime(workspaceRoot, state);
-    const fallbackPrompt = runtime.buildPrompt(command, userInput);
-    return this.sendToLlm(fallbackPrompt, request, stream, token);
+    // 2. No prompt file — guide the user.
+    this.log(`No prompt file for ${command.slashName}`);
+    stream.markdown(
+      `⚠️ **No prompt file found** for \`${command.slashName}\`.\n\n` +
+        'The official `.prompt.md` / `.agent.md` file is missing from `.github/prompts/`.\n\n' +
+        'Run the BMAD installer to generate it:\n' +
+        '```bash\nnpx bmad-method install --tools github-copilot --yes\n```\n\n' +
+        '> Then use `@bmad /update` to refresh the command registry.',
+    );
+    return {};
   }
 
   /**

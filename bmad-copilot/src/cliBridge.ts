@@ -74,7 +74,7 @@ export class CliBridge {
    *
    * **Priority order:**
    * 1. `<workspaceRoot>/node_modules/.bin/bmad` (local install)
-   * 2. `npx bmad-method` (global/npx fallback)
+   * 2. `npx bmad-method` (npx fallback)
    *
    * On Windows, `.cmd` extensions are checked first.
    *

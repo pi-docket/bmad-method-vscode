@@ -22,7 +22,9 @@ import * as path from 'node:path';
 import { CommandRegistry } from './commandRegistry.js';
 import { CliBridge } from './cliBridge.js';
 import { ChatBridge } from './chatBridge.js';
-import { ensureCopilotPrompts } from './promptMirror.js';
+// NOTE: promptMirror.ts is DEPRECATED and not imported.
+// The adapter is a pure read-only bridge. The official
+// `npx bmad-method install` generates `.github/prompts` directly.
 
 /* ------------------------------------------------------------------ */
 /*  Constants                                                         */
@@ -55,10 +57,10 @@ export async function activate(
   const registry = new CommandRegistry();
   const cliBridge = new CliBridge(outputChannel);
 
-  // Initial scan (with prompt mirroring)
+  // Initial scan — read official .github/prompts as-is (no mirroring)
   const workspaceRoot = getWorkspaceRoot();
   if (workspaceRoot) {
-    await performScanWithMirror(registry, workspaceRoot, outputChannel);
+    await performScan(registry, workspaceRoot, outputChannel);
   } else {
     log(outputChannel, 'No workspace folder open — skipping initial scan.');
   }
@@ -79,10 +81,39 @@ export async function activate(
   log(outputChannel, 'Chat participant @bmad registered.');
 
   /* -------------------------------------------------------------- */
+  /*  Prompt integrity check on activation                           */
+  /* -------------------------------------------------------------- */
+
+  if (workspaceRoot) {
+    const promptsDir = require('node:path').join(workspaceRoot, '.github', 'prompts');
+    const bmadDirLocal = require('node:path').join(workspaceRoot, '_bmad');
+
+    const hasBmadDir = fs.existsSync(bmadDirLocal);
+    const hasPrompts = fs.existsSync(promptsDir) &&
+      fs.readdirSync(promptsDir).some((f: string) => f.startsWith('bmad') && f.endsWith('.prompt.md'));
+
+    if (hasBmadDir && !hasPrompts) {
+      log(outputChannel, 'Prompt integrity check: _bmad/ exists but .github/prompts/ missing — notifying user.');
+      vscode.window.showWarningMessage(
+        'BMAD Copilot: Prompt files missing. Use @bmad /update or run `npx bmad-copilot-adapter update` to sync.',
+        'Run Update',
+      ).then((choice) => {
+        if (choice === 'Run Update') {
+          vscode.commands.executeCommand('bmad-copilot.update');
+        }
+      });
+    } else if (!hasBmadDir) {
+      log(outputChannel, 'Prompt integrity check: No _bmad/ found. BMAD not installed.');
+    } else {
+      log(outputChannel, 'Prompt integrity check: OK.');
+    }
+  }
+
+  /* -------------------------------------------------------------- */
   /*  Registered commands                                            */
   /* -------------------------------------------------------------- */
 
-  // Manual rescan (with mirror)
+  // Manual rescan
   context.subscriptions.push(
     vscode.commands.registerCommand('bmad-copilot.rescan', async () => {
       const root = getWorkspaceRoot();
@@ -90,8 +121,23 @@ export async function activate(
         vscode.window.showWarningMessage('BMAD Copilot: No workspace folder is open.');
         return;
       }
-      const count = await performScanWithMirror(registry, root, outputChannel);
+      const count = await performScan(registry, root, outputChannel);
       vscode.window.showInformationMessage(`BMAD Copilot: Scanned ${count} commands.`);
+    }),
+  );
+
+  // Update command — invalidate + rescan + notify
+  context.subscriptions.push(
+    vscode.commands.registerCommand('bmad-copilot.update', async () => {
+      const root = getWorkspaceRoot();
+      if (!root) {
+        vscode.window.showWarningMessage('BMAD Copilot: No workspace folder is open.');
+        return;
+      }
+      log(outputChannel, 'Update command triggered — invalidating and rescanning…');
+      registry.invalidate();
+      const count = await performScan(registry, root, outputChannel);
+      vscode.window.showInformationMessage(`BMAD Copilot: Updated — ${count} commands refreshed.`);
     }),
   );
 
@@ -125,7 +171,7 @@ export async function activate(
       scanTimer = setTimeout(async () => {
         log(outputChannel, 'File change detected — rescanning…');
         const root = getWorkspaceRoot();
-        if (root) await performScanWithMirror(registry, root, outputChannel);
+        if (root) await performScan(registry, root, outputChannel);
       }, 2000);
     };
 
@@ -149,7 +195,7 @@ export async function activate(
       if (e.affectsConfiguration('bmad')) {
         log(outputChannel, 'Configuration changed — rescanning…');
         const root = getWorkspaceRoot();
-        if (root) await performScanWithMirror(registry, root, outputChannel);
+        if (root) await performScan(registry, root, outputChannel);
       }
     }),
   );
@@ -171,46 +217,21 @@ export function deactivate(): void {
 /* ------------------------------------------------------------------ */
 
 /**
- * Run prompt mirror (claude-code → Copilot) if needed, then scan.
+ * Scan the workspace for official BMAD prompt files and build the
+ * command registry.
  *
- * This is the single function called at activation, on rescan, and
- * on file-change detection. It guarantees that:
- * 1. If `.github/prompts/` is missing but `_bmad/ide/claude-code/`
- *    exists → mirror files are generated first.
- * 2. Then a full registry scan picks up the (potentially new) files.
+ * This function reads `.github/prompts/` and `.github/agents/` as-is.
+ * It does NOT mirror, convert, or rewrite any files. The official
+ * `npx bmad-method install` is the sole source of truth.
  */
-async function performScanWithMirror(
+async function performScan(
   registry: CommandRegistry,
   workspaceRoot: string,
   outputChannel: vscode.OutputChannel,
 ): Promise<number> {
-  // Read config once at the top
   const config = vscode.workspace.getConfiguration('bmad');
   const configuredBmadDir = config.get<string>('bmadDir');
 
-  // ── Attempt prompt mirror ──────────────────────────────────
-  try {
-    const bmadDir = configuredBmadDir || findBmadDir(workspaceRoot);
-    if (bmadDir) {
-      const result = await ensureCopilotPrompts({ workspaceRoot, bmadDir });
-      if (result.alreadyExists) {
-        log(outputChannel, 'Prompt mirror: Copilot files already exist — skipped.');
-      } else if (result.performed) {
-        log(
-          outputChannel,
-          `Prompt mirror: ${result.promptCount} prompt(s), ${result.agentCount} agent(s) ` +
-            `mirrored from claude-code → .github/`,
-        );
-      } else {
-        log(outputChannel, `Prompt mirror: ${result.message}`);
-      }
-    }
-  } catch (err) {
-    const msg = err instanceof Error ? err.message : String(err);
-    log(outputChannel, `Prompt mirror failed: ${msg}`);
-  }
-
-  // ── Normal scan (picks up mirrored files) ──────────────────
   try {
     const state = await registry.scan(workspaceRoot, configuredBmadDir || undefined);
     if (!state) {
