@@ -139,11 +139,25 @@ export async function status(options: StatusOptions): Promise<void> {
 /*  Helpers                                                           */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Print a status check line with icon.
+ *
+ * @param label - Check label.
+ * @param value - Check value/status.
+ * @param ok - Whether the check passed.
+ * @param isOptional - Whether this check is optional.
+ */
 function printCheck(label: string, value: string, ok: boolean, isOptional = false): void {
   const icon = ok ? FMT.green('✔') : isOptional ? FMT.yellow('◇') : FMT.red('✖');
   console.log(`  ${icon} ${label}: ${value}`);
 }
 
+/**
+ * Detect installed BMAD modules in the _bmad directory.
+ *
+ * @param bmadDir - Absolute path to _bmad directory.
+ * @returns Array of module names.
+ */
 function detectModules(bmadDir: string): string[] {
   try {
     return fs
@@ -163,6 +177,12 @@ function detectModules(bmadDir: string): string[] {
   }
 }
 
+/**
+ * Count non-header rows in a CSV file.
+ *
+ * @param filePath - Absolute path to CSV file.
+ * @returns Number of data rows (excluding header).
+ */
 function countCsvRows(filePath: string): number {
   try {
     const content = fs.readFileSync(filePath, 'utf8');
@@ -173,6 +193,13 @@ function countCsvRows(filePath: string): number {
   }
 }
 
+/**
+ * List BMAD files in a directory with a specific suffix.
+ *
+ * @param dir - Absolute path to directory.
+ * @param suffix - File suffix to filter by.
+ * @returns Array of matching filenames.
+ */
 function listBmadFiles(dir: string, suffix: string): string[] {
   try {
     if (!fs.existsSync(dir)) return [];
@@ -182,6 +209,12 @@ function listBmadFiles(dir: string, suffix: string): string[] {
   }
 }
 
+/**
+ * List BMAD agent files in a directory.
+ *
+ * @param dir - Absolute path to directory.
+ * @returns Array of agent filenames.
+ */
 function listBmadAgentFiles(dir: string): string[] {
   try {
     if (!fs.existsSync(dir)) return [];
@@ -191,6 +224,11 @@ function listBmadAgentFiles(dir: string): string[] {
   }
 }
 
+/**
+ * Detect VS Code CLI availability and version.
+ *
+ * @returns Object with availability status and version string.
+ */
 function detectVsCode(): { available: boolean; version: string | null } {
   const isWindows = process.platform === 'win32';
 
@@ -211,6 +249,11 @@ function detectVsCode(): { available: boolean; version: string | null } {
   return { available: false, version: null };
 }
 
+/**
+ * Check if the BMAD Copilot Adapter extension is installed in VS Code.
+ *
+ * @returns `true` if extension is installed.
+ */
 function checkExtensionInstalled(): boolean {
   const isWindows = process.platform === 'win32';
   const extensionId = 'evil9369.bmad-copilot-adapter';

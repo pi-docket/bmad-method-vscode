@@ -100,6 +100,13 @@ export class ChatBridge {
   private readonly cliBridge: CliBridge;
   private readonly outputChannel: vscode.OutputChannel;
 
+  /**
+   * Create a Chat Bridge instance.
+   *
+   * @param registry - Command registry for resolving BMAD commands.
+   * @param cliBridge - CLI bridge for executing bmad-method commands.
+   * @param outputChannel - VS Code output channel for logging.
+   */
   constructor(
     registry: CommandRegistry,
     cliBridge: CliBridge,
@@ -169,6 +176,9 @@ export class ChatBridge {
    * Handle `/install` — open a VS Code terminal running the real
    * BMAD CLI installer. The installer uses `@clack/prompts` for
    * interactive terminal UI, so it must run in a real TTY.
+   *
+   * @param stream - Chat response stream for sending messages to user.
+   * @returns Chat result.
    */
   private handleInstall(stream: vscode.ChatResponseStream): vscode.ChatResult {
     const workspaceRoot = this.getWorkspaceRoot();
@@ -199,6 +209,9 @@ export class ChatBridge {
    * Handle `/update` — invalidate the cached command registry and
    * trigger a full rescan. This is the Copilot Chat counterpart
    * of the CLI `npx bmad-copilot-adapter update` command.
+   *
+   * @param stream - Chat response stream for sending messages to user.
+   * @returns Chat result.
    */
   private handleUpdate(
     stream: vscode.ChatResponseStream,
@@ -231,6 +244,10 @@ export class ChatBridge {
    *
    * Works even when `state` is null (no `_bmad/`), so the user can
    * diagnose installation problems.
+   *
+   * @param state - Current registry state, or null if BMAD not installed.
+   * @param stream - Chat response stream for sending messages to user.
+   * @returns Chat result.
    */
   private handleStatus(
     state: RegistryState | null,
@@ -281,6 +298,12 @@ export class ChatBridge {
   /**
    * Handle `/help` — show available commands and usage guidance.
    * If the user provides a topic, filter or focus the help output.
+   *
+   * @param state - Current registry state.
+   * @param request - The chat request object.
+   * @param stream - Chat response stream for sending messages to user.
+   * @param token - Cancellation token.
+   * @returns Chat result.
    */
   private async handleHelp(
     state: RegistryState,
@@ -375,6 +398,12 @@ export class ChatBridge {
    *    resolves `{project-root}` references via its own workspace context.
    * 3. If no prompt file → fall back to BmadRuntime prompt builder
    *    (reads from `_bmad/` directly).
+   *
+   * @param state - Current registry state.
+   * @param request - The chat request object.
+   * @param stream - Chat response stream for sending messages to user.
+   * @param token - Cancellation token.
+   * @returns Chat result.
    */
   private async handleRun(
     state: RegistryState,
@@ -412,7 +441,13 @@ export class ChatBridge {
   /*  /agents, /workflows, /tasks — Listing views                   */
   /* -------------------------------------------------------------- */
 
-  /** Handle `/agents` — list installed agents. */
+  /**
+   * Handle `/agents` — list installed agents.
+   *
+   * @param state - Current registry state.
+   * @param stream - Chat response stream for sending messages to user.
+   * @returns Chat result.
+   */
   private handleAgents(
     state: RegistryState,
     stream: vscode.ChatResponseStream,
@@ -448,7 +483,13 @@ export class ChatBridge {
     return {};
   }
 
-  /** Handle `/workflows` — list installed workflows. */
+  /**
+   * Handle `/workflows` — list installed workflows.
+   *
+   * @param state - Current registry state.
+   * @param stream - Chat response stream for sending messages to user.
+   * @returns Chat result.
+   */
   private handleWorkflows(
     state: RegistryState,
     stream: vscode.ChatResponseStream,
@@ -491,7 +532,13 @@ export class ChatBridge {
     return {};
   }
 
-  /** Handle `/tasks` — list installed tasks and tools. */
+  /**
+   * Handle `/tasks` — list installed tasks and tools.
+   *
+   * @param state - Current registry state.
+   * @param stream - Chat response stream for sending messages to user.
+   * @returns Chat result.
+   */
   private handleTasks(
     state: RegistryState,
     stream: vscode.ChatResponseStream,
@@ -534,6 +581,12 @@ export class ChatBridge {
    *
    * 1. If it starts with `bmad-`, try exact match → execute.
    * 2. Otherwise, send to LLM with BMAD workspace context.
+   *
+   * @param state - Current registry state.
+   * @param request - The chat request object.
+   * @param stream - Chat response stream for sending messages to user.
+   * @param token - Cancellation token.
+   * @returns Chat result.
    */
   private async handleFreeText(
     state: RegistryState,
@@ -585,6 +638,13 @@ export class ChatBridge {
    * The prompt body is passed **as-is** — no file inlining, no
    * `{project-root}` resolution. The LLM reads workspace files
    * through its own context, matching native Copilot behaviour.
+   *
+   * @param command - The resolved BMAD command to execute.
+   * @param userInput - Additional input from the user.
+   * @param request - The chat request object.
+   * @param stream - Chat response stream for sending messages to user.
+   * @param token - Cancellation token.
+   * @returns Chat result.
    */
   private async executeCommand(
     command: BmadCommand,
@@ -661,7 +721,13 @@ export class ChatBridge {
   /*  Command not found                                             */
   /* -------------------------------------------------------------- */
 
-  /** Show a "not found" message with fuzzy suggestions. */
+  /**
+   * Show a "not found" message with fuzzy suggestions.
+   *
+   * @param rawName - The command name that was not found.
+   * @param stream - Chat response stream for sending messages to user.
+   * @returns Chat result.
+   */
   private handleCommandNotFound(
     rawName: string,
     stream: vscode.ChatResponseStream,
@@ -683,7 +749,12 @@ export class ChatBridge {
     return {};
   }
 
-  /** Format detailed info for a single command. */
+  /**
+   * Format detailed information for a single command.
+   *
+   * @param cmd - The command to format.
+   * @returns Formatted Markdown string.
+   */
   private formatCommandDetail(cmd: BmadCommand): string {
     const lines = [
       `## \`${cmd.slashName}\`\n`,
@@ -707,6 +778,12 @@ export class ChatBridge {
    *
    * Uses `request.model.sendRequest()` to respect the user's
    * selected model preference.
+   *
+   * @param prompt - The prompt text to send to the LLM.
+   * @param request - The chat request object.
+   * @param stream - Chat response stream for sending messages to user.
+   * @param token - Cancellation token.
+   * @returns Chat result.
    */
   private async sendToLlm(
     prompt: string,
@@ -742,7 +819,12 @@ export class ChatBridge {
   /*  Utilities                                                     */
   /* -------------------------------------------------------------- */
 
-  /** Get the first workspace folder path. */
+  /**
+   * Get the first workspace folder path.
+   *
+   * @returns Absolute path to the workspace root.
+   * @throws Error if no workspace folder is open.
+   */
   private getWorkspaceRoot(): string {
     const folders = vscode.workspace.workspaceFolders;
     if (!folders || folders.length === 0) {
@@ -751,7 +833,11 @@ export class ChatBridge {
     return folders[0].uri.fsPath;
   }
 
-  /** Write a timestamped log line. */
+  /**
+   * Write a timestamped log line to the output channel.
+   *
+   * @param message - Message to log.
+   */
   private log(message: string): void {
     const ts = new Date().toISOString();
     this.outputChannel.appendLine(`[${ts}] [ChatBridge] ${message}`);

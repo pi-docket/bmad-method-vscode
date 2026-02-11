@@ -258,6 +258,9 @@ async function performScan(
 
 /**
  * Locate the `_bmad` directory in the workspace.
+ *
+ * @param workspaceRoot - Absolute path to the workspace root.
+ * @returns Absolute path to `_bmad`, or `null` if not found.
  */
 function findBmadDir(workspaceRoot: string): string | null {
   const candidate = path.join(workspaceRoot, '_bmad');
@@ -270,11 +273,22 @@ function findBmadDir(workspaceRoot: string): string | null {
   return null;
 }
 
+/**
+ * Get the first workspace folder's filesystem path.
+ *
+ * @returns Absolute path to the workspace root, or `undefined` if no workspace is open.
+ */
 function getWorkspaceRoot(): string | undefined {
   const folders = vscode.workspace.workspaceFolders;
   return folders && folders.length > 0 ? folders[0].uri.fsPath : undefined;
 }
 
+/**
+ * Write a timestamped log message to the output channel.
+ *
+ * @param channel - VS Code output channel.
+ * @param message - Message to log.
+ */
 function log(channel: vscode.OutputChannel, message: string): void {
   const ts = new Date().toISOString();
   channel.appendLine(`[${ts}] ${message}`);

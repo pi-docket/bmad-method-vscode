@@ -149,6 +149,9 @@ export async function update(options: UpdateOptions): Promise<void> {
 
 /**
  * Count non-header rows in a CSV file.
+ *
+ * @param filePath - Absolute path to CSV file.
+ * @returns Number of data rows (excluding header).
  */
 function countCsvRows(filePath: string): number {
   try {
@@ -162,6 +165,9 @@ function countCsvRows(filePath: string): number {
 
 /**
  * Detect installed module directories under `_bmad/`.
+ *
+ * @param bmadDir - Absolute path to _bmad directory.
+ * @returns Array of module names.
  */
 function detectModules(bmadDir: string): string[] {
   try {

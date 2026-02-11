@@ -59,18 +59,38 @@ const FMT = {
   dim: (s: string) => `\x1b[2m${s}\x1b[0m`,
 };
 
+/**
+ * Print a success step message with green checkmark.
+ *
+ * @param msg - Message to display.
+ */
 function stepOk(msg: string): void {
   console.log(`  ${FMT.green('✔')} ${msg}`);
 }
 
+/**
+ * Print a skipped step message with yellow circle.
+ *
+ * @param msg - Message to display.
+ */
 function stepSkip(msg: string): void {
   console.log(`  ${FMT.yellow('◇')} ${msg}`);
 }
 
+/**
+ * Print a failure step message with red X.
+ *
+ * @param msg - Message to display.
+ */
 function stepFail(msg: string): void {
   console.log(`  ${FMT.red('✖')} ${msg}`);
 }
 
+/**
+ * Print an informational step message with cyan info icon.
+ *
+ * @param msg - Message to display.
+ */
 function stepInfo(msg: string): void {
   console.log(`  ${FMT.cyan('ℹ')} ${msg}`);
 }
@@ -355,6 +375,12 @@ function validateCopilotRegistration(cwd: string): StepResult {
 /*  File helpers                                                      */
 /* ------------------------------------------------------------------ */
 
+/**
+ * Check if a directory contains BMAD prompt files.
+ *
+ * @param dir - Absolute path to directory.
+ * @returns `true` if directory contains `bmad*.prompt.md` files.
+ */
 function hasBmadFiles(dir: string): boolean {
   try {
     return fs.readdirSync(dir).some((f) => f.startsWith('bmad') && f.endsWith('.prompt.md'));
@@ -363,6 +389,12 @@ function hasBmadFiles(dir: string): boolean {
   }
 }
 
+/**
+ * Check if a directory contains BMAD agent files.
+ *
+ * @param dir - Absolute path to directory.
+ * @returns `true` if directory contains `bmad-agent*.md` files.
+ */
 function hasBmadAgentFiles(dir: string): boolean {
   try {
     return fs.readdirSync(dir).some((f) => f.startsWith('bmad-agent') && f.endsWith('.md'));
@@ -371,6 +403,12 @@ function hasBmadAgentFiles(dir: string): boolean {
   }
 }
 
+/**
+ * Count BMAD prompt files in a directory.
+ *
+ * @param dir - Absolute path to directory.
+ * @returns Number of `bmad*.prompt.md` files found.
+ */
 function countBmadFiles(dir: string): number {
   try {
     return fs.readdirSync(dir).filter((f) => f.startsWith('bmad') && f.endsWith('.prompt.md')).length;
@@ -379,6 +417,12 @@ function countBmadFiles(dir: string): number {
   }
 }
 
+/**
+ * Count BMAD agent files in a directory.
+ *
+ * @param dir - Absolute path to directory.
+ * @returns Number of `bmad-agent*.md` files found.
+ */
 function countBmadAgentFiles(dir: string): number {
   try {
     return fs.readdirSync(dir).filter((f) => f.startsWith('bmad-agent') && f.endsWith('.md')).length;

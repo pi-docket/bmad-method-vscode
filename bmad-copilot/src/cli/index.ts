@@ -53,6 +53,12 @@ interface ParsedArgs {
   version: boolean;
 }
 
+/**
+ * Parse command-line arguments from process.argv.
+ *
+ * @param argv - Raw command-line arguments array.
+ * @returns Parsed arguments object.
+ */
 function parseArgs(argv: string[]): ParsedArgs {
   const args = argv.slice(2); // Skip node + script path
   const result: ParsedArgs = {
@@ -86,6 +92,9 @@ function parseArgs(argv: string[]): ParsedArgs {
 /*  Main                                                              */
 /* ------------------------------------------------------------------ */
 
+/**
+ * CLI entry point — parses arguments and dispatches to command handlers.
+ */
 async function main(): Promise<void> {
   const args = parseArgs(process.argv);
 
