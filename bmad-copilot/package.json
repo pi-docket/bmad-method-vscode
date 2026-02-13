@@ -2,7 +2,7 @@
   "name": "bmad-copilot-adapter",
   "displayName": "BMAD Method — Copilot Chat Adapter",
   "description": "Official prompt executor that enables BMAD-METHOD workflows to run natively inside GitHub Copilot Chat. Not a fork — a bridge.",
-  "version": "0.2.4",
+  "version": "0.2.5",
   "publisher": "evil9369",
   "license": "MIT",
   "author": {

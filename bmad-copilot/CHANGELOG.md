@@ -24,7 +24,7 @@
 ### Added
 
 - **CLI Bootstrap Layer** (`bin/bmad-copilot-adapter.js`)
-  - `npx bmad-copilot-adapter bootstrap` — Full setup: check Node ≥18, verify prompts, detect VS Code, install extension, validate registration
+  - `npx bmad-copilot-adapter bootstrap` — Full setup: check Node ≥18, verify prompts, verify VS Code extension is installed, validate registration
   - `npx bmad-copilot-adapter update` — Rescan `.github/prompts`, count manifests, write sentinel, trigger extension refresh
   - `npx bmad-copilot-adapter status` — Show full BMAD installation diagnostics
 

@@ -2,28 +2,41 @@
 
 > Official prompt executor that enables BMAD-METHOD workflows to run natively inside GitHub Copilot Chat. Not a fork — a pure read-only bridge.
 
+> **⚠️ Important:** This extension is distributed as **source code only**. You must build and install it yourself — it is not available on the VS Code Marketplace.
+
 [![npm version](https://img.shields.io/npm/v/bmad-copilot-adapter)](https://www.npmjs.com/package/bmad-copilot-adapter)
 [![BMAD-METHOD](https://img.shields.io/badge/BMAD--METHOD-≥6.0.0-blue)](https://github.com/pi-docket/bmad-method-vscode)
 [![License: MIT](https://img.shields.io/badge/License-MIT-yellow.svg)](LICENSE)
 
 ---
 
-## Installation — two commands, zero setup
+## Installation
+
+**Note:** This extension is not published to the VS Code Marketplace. You must build and install it manually from source.
+
+### Step 1 — Build and Install the Extension
+
+```bash
+git clone https://github.com/pi-docket/bmad-method-vscode.git
+cd bmad-method-vscode/bmad-copilot
+npm install
+npm run vsce:package
+code --install-extension releases/bmad-copilot-adapter-0.2.5.vsix
+```
+
+### Step 2 — Install BMAD-METHOD in Your Project
 
 ```bash
 cd /path/to/your-project
 npx bmad-method install                  # interactive menu — select GitHub Copilot as tool
-npx bmad-copilot-adapter bootstrap       # detect prompts, install VS Code extension, done
+npx bmad-copilot-adapter bootstrap       # detect prompts and verify setup
 ```
 
-That's it. No `npm install` needed — `npx` downloads and runs both
-packages on the fly. No global install either.
-
-> **Tip:** If you want to pin versions in your project, you can
-> optionally add them as dev dependencies:
+> **Tip:** After building the extension, you can optionally add the CLI
+> tool as a dev dependency in your projects:
 >
 > ```bash
-> npm install --save-dev bmad-method bmad-copilot-adapter
+> npm install --save-dev bmad-copilot-adapter
 > ```
 
 ---
@@ -59,7 +72,9 @@ Copilot:     @bmad /run bmad-bmm-create-prd
 
 ## Quick Start
 
-### Step 1 — Install BMAD-METHOD
+**Prerequisites:** You must have already built and installed the VS Code extension (see Installation section above).
+
+### Step 1 — Install BMAD-METHOD in Your Project
 
 ```bash
 cd /path/to/your-project
@@ -86,7 +101,7 @@ This will:
 
 1. Check Node.js version (≥ 18)
 2. Verify `.github/agents/` or `.github/prompts/` exists (warns if missing)
-3. Detect VS Code CLI and auto-install the extension
+3. Verify the VS Code extension is installed
 4. Print a summary of discovered commands
 
 ### Step 3 — Verify in VS Code
@@ -101,21 +116,35 @@ You should see ✅ for `_bmad/` directory and GitHub Copilot prompt files.
 
 ---
 
-## Alternative Installation
+## Building from Source
 
-If you prefer manual VS Code extension setup:
-
-**From the VS Code Marketplace:**
+This extension is distributed as source code only. To build and install:
 
 ```bash
-code --install-extension evil9369.bmad-copilot-adapter
+# Clone the repository
+git clone https://github.com/pi-docket/bmad-method-vscode.git
+cd bmad-method-vscode/bmad-copilot
+
+# Install dependencies
+npm install
+
+# Build the extension
+npm run build
+
+# Package as VSIX
+npm run vsce:package
+
+# Install in VS Code
+code --install-extension releases/bmad-copilot-adapter-0.2.5.vsix
 ```
 
-**From VSIX (manual):**
+**Updating:** When new versions are released, pull the latest changes, rebuild, and reinstall:
 
-```powershell
-npx @vscode/vsce package --out releases/
-code --install-extension releases/bmad-copilot-adapter-0.2.4.vsix
+```bash
+git pull
+npm install
+npm run vsce:package
+code --install-extension releases/bmad-copilot-adapter-0.2.5.vsix --force
 ```
 
 ---
@@ -134,7 +163,7 @@ npx bmad-copilot-adapter --help      # Show CLI help
 
 | Command     | Purpose                                                                            |
 | ----------- | ---------------------------------------------------------------------------------- |
-| `bootstrap` | Verify Node ≥18, check prompts, install extension, print summary                   |
+| `bootstrap` | Verify Node ≥18, check prompts, verify extension, print summary                    |
 | `update`    | Rescan `.github/agents/` & `prompts/`, count manifests, write sentinel for VS Code |
 | `status`    | Full diagnostic: Node, `_bmad/`, prompts, CSV health, VS Code                      |
 
@@ -297,11 +326,12 @@ Press `F5` in VS Code to launch the Extension Development Host.
 | `npm run watch`        | Compile in watch mode             |
 | `npm run lint`         | Type-check without emitting       |
 | `npm run vsce:package` | Build VSIX package to `releases/` |
-| `npm run vsce:publish` | Publish to VS Code Marketplace    |
 
 ---
 
 ## Publishing & Versioning
+
+**Note:** The VS Code extension (VSIX) is not published to the Marketplace. Users must build it from source. The CLI tool may be available via npm for convenience.
 
 This project follows [Semantic Versioning](https://semver.org/):
 
@@ -311,17 +341,26 @@ This project follows [Semantic Versioning](https://semver.org/):
 | `minor` (0.2.0 → 0.3.0) | New features, new slash commands |
 | `major` (0.x → 1.0.0)   | Breaking changes, API changes    |
 
-### Release Process (manual)
+### Release Process
 
-```powershell
-# 1. Build
-npm run build
+Version tags are created in git to mark releases:
 
-# 2. Publish to npm
-npm publish --access public --ignore-scripts
+```bash
+# Update version in package.json
+npm version patch  # or minor, major
 
-# 3. (Optional) Publish VSIX to VS Code Marketplace
-npx @vscode/vsce publish
+# Tag and push
+git push origin main --follow-tags
+```
+
+Users can then clone the repository at a specific tag and build the VSIX:
+
+```bash
+git clone --branch v0.2.5 https://github.com/pi-docket/bmad-method-vscode.git
+cd bmad-method-vscode/bmad-copilot
+npm install
+npm run vsce:package
+code --install-extension releases/bmad-copilot-adapter-0.2.5.vsix
 ```
 
 ---
