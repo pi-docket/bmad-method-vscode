@@ -2,7 +2,7 @@
   "name": "bmad-copilot-adapter",
   "displayName": "BMAD Method — Copilot Chat Adapter",
   "description": "Official prompt executor that enables BMAD-METHOD workflows to run natively inside GitHub Copilot Chat. VS Code extension (VSIX) must be built from source — not available on Marketplace.",
-  "version": "0.2.5",
+  "version": "0.2.6",
   "publisher": "evil9369",
   "license": "MIT",
   "author": {
