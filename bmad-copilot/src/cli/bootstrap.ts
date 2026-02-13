@@ -5,9 +5,12 @@
  * 1. Verify Node.js version (>=18)
  * 2. Check for `.github/prompts` directory (warn if missing — do NOT auto-install)
  * 3. Detect VS Code CLI (`code` command)
- * 4. Auto-install the BMAD Copilot extension
+ * 4. Check if the BMAD Copilot extension is installed (provide build instructions if not)
  * 5. Validate prompt directory readable
  * 6. Print success summary with prompts/agents/commands found
+ *
+ * Note: The VS Code extension is NOT published to the Marketplace.
+ * Users must build and install it manually from source.
  *
  * This is a pure adapter — it never modifies, converts, or generates
  * prompt files. The official `npx bmad-method install` is the only
@@ -160,7 +163,7 @@ export async function bootstrap(options: BootstrapOptions): Promise<void> {
     }
   }
 
-  // ── Step 4: Install VS Code extension ───────────────────────
+  // ── Step 4: Check VS Code extension ─────────────────────────
   {
     const vsCodeAvailable = results[results.length - 1].ok;
     if (vsCodeAvailable) {
@@ -172,9 +175,20 @@ export async function bootstrap(options: BootstrapOptions): Promise<void> {
         stepSkip(result.message);
       } else {
         stepFail(result.message);
+        console.log('');
+        console.log(FMT.yellow('  📦 How to build and install the extension:'));
+        console.log('');
+        console.log(FMT.dim('    git clone https://github.com/pi-docket/bmad-method-vscode.git'));
+        console.log(FMT.dim('    cd bmad-method-vscode/bmad-copilot'));
+        console.log(FMT.dim('    npm install'));
+        console.log(FMT.dim('    npm run vsce:package'));
+        console.log(FMT.dim('    code --install-extension releases/bmad-copilot-adapter-0.2.5.vsix'));
+        console.log('');
+        console.log(FMT.cyan('  📖 Full instructions: https://www.npmjs.com/package/bmad-copilot-adapter'));
+        console.log('');
       }
     } else {
-      stepSkip('VS Code not detected — skipping extension install');
+      stepSkip('VS Code not detected — skipping extension check');
       results.push({ ok: false, message: 'VS Code not detected', skipped: true });
     }
   }
@@ -276,7 +290,10 @@ function detectVsCodeCli(): StepResult {
 }
 
 /**
- * Step 5: Install the BMAD Copilot Adapter extension.
+ * Step 4: Check if VS Code extension is installed.
+ * 
+ * Note: This extension is NOT published to the VS Code Marketplace.
+ * Users must build and install it manually from source.
  */
 async function installExtension(): Promise<StepResult> {
   const extensionId = 'evil9369.bmad-copilot-adapter';
@@ -299,38 +316,14 @@ async function installExtension(): Promise<StepResult> {
       }
     }
   } catch {
-    // Continue to install attempt
+    // Continue to not-installed message
   }
 
-  return new Promise<StepResult>((resolve) => {
-    stepInfo(`Installing extension: ${extensionId}`);
-
-    // Avoid DEP0190: on Windows, pass full command string to shell
-    const proc = isWindows
-      ? cp.spawn(`code.cmd --install-extension ${extensionId}`, { timeout: 60000, shell: true, stdio: 'inherit' })
-      : cp.spawn('code', ['--install-extension', extensionId], { timeout: 60000, stdio: 'inherit' });
-
-    proc.on('close', (code) => {
-      if (code === 0) {
-        resolve({
-          ok: true,
-          message: `Extension ${extensionId} installed`,
-        });
-      } else {
-        resolve({
-          ok: false,
-          message: `Extension install exited with code ${code}. Install manually: code --install-extension ${extensionId}`,
-        });
-      }
-    });
-
-    proc.on('error', (err) => {
-      resolve({
-        ok: false,
-        message: `Extension install failed: ${err.message}`,
-      });
-    });
-  });
+  // Extension not found — instruct user to build from source
+  return {
+    ok: false,
+    message: `Extension not installed. This extension must be built from source.`,
+  };
 }
 
 /**
